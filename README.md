@@ -8,7 +8,7 @@ Android Signature Pad is an Android library for drawing smooth signatures. It us
 ## Features
  * Bézier implementation for a smoother line
  * Variable point size based on velocity
- * Customizable in pen color and size
+ * Customizable pen color and size
  
 ##Usage
 
@@ -57,7 +57,7 @@ Android Signature Pad is an Android library for drawing smooth signatures. It us
 
 ## Caveats
 
-Currently doesn't support screen rotations.
+Currently doesn't support screen rotations. Pull requests are welcome!
 
 ## License
 
