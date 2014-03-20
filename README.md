@@ -1,4 +1,4 @@
-android-signaturepad
+Android Signature Pad
 ====================
 
 A custom Android View to capture signatures
