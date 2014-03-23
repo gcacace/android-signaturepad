@@ -200,20 +200,23 @@ public class SignaturePad extends View
         switch (event.getAction())
         {
             case MotionEvent.ACTION_DOWN:
+                getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
                 mPath.moveTo(eventX, eventY);
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(new TimedPoint(eventX, eventY));
                 setIsEmpty(false);
-                return true;
 
             case MotionEvent.ACTION_MOVE:
-
-            case MotionEvent.ACTION_UP:
-
                 resetDirtyRect(eventX, eventY);
                 addPoint(new TimedPoint(eventX, eventY));
+                break;
+
+            case MotionEvent.ACTION_UP:
+                resetDirtyRect(eventX, eventY);
+                addPoint(new TimedPoint(eventX, eventY));
+                getParent().requestDisallowInterceptTouchEvent(true);
                 break;
 
             default:
@@ -264,7 +267,7 @@ public class SignaturePad extends View
         mOnSignedListener = listener;
     }
 
-    public boolean mIsEmpty() {
+    public boolean isEmpty() {
         return mIsEmpty;
     }
 
@@ -294,6 +297,31 @@ public class SignaturePad extends View
     public Bitmap getTransparentSignatureBitmap() {
         ensureSignatureBitmap();
         return mSignatureBitmap;
+    }
+
+    public void setSignatureBitmap(Bitmap signature) {
+        clear();
+        ensureSignatureBitmap();
+
+        RectF tempSrc = new RectF();
+        RectF tempDst = new RectF();
+
+        int dwidth = signature.getWidth();
+        int dheight = signature.getHeight();
+        int vwidth = getWidth();
+        int vheight = getHeight();
+
+        // Generate the required transform.
+        tempSrc.set(0, 0, dwidth, dheight);
+        tempDst.set(0, 0, vwidth, vheight);
+
+        Matrix drawMatrix = new Matrix();
+        drawMatrix.setRectToRect(tempSrc, tempDst, Matrix.ScaleToFit.CENTER);
+
+        Canvas canvas = new Canvas(mSignatureBitmap);
+        canvas.drawBitmap(signature, drawMatrix, null);
+        setIsEmpty(false);
+        invalidate();
     }
 
     private void ensureSignatureBitmap() {
