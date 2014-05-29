@@ -89,6 +89,7 @@ public class SignaturePad extends View
             TimedPoint endPoint = curve.endPoint;
 
             float velocity = endPoint.velocityFrom(startPoint);
+            velocity = Float.isNaN(velocity) ? 0.0f : velocity;
 
             velocity = mVelocityFilterWeight * velocity
                     + (1 - mVelocityFilterWeight) * mLastVelocity;
