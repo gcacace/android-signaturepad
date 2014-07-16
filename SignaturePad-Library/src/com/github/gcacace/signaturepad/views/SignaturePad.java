@@ -1,18 +1,25 @@
 package com.github.gcacace.signaturepad.views;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.*;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
+
 import com.github.gcacace.signaturepad.R;
 import com.github.gcacace.signaturepad.utils.Bezier;
 import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
 import com.github.gcacace.signaturepad.utils.TimedPoint;
-import android.content.Context;
-import android.util.AttributeSet;
-import android.view.MotionEvent;
-import android.view.View;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SignaturePad extends View
 {
