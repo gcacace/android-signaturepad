@@ -55,6 +55,11 @@ Android Signature Pad is an Android library for drawing smooth signatures. It us
  * `getSignatureBitmap()` - A signature bitmap with a white background.
  * `getTransparentSignatureBitmap()` - A signature bitmap with a transparent background.
 
+## Cordova Plugin
+
+Thanks to [netinhoteixeira](https://github.com/netinhoteixeira/), there is a Cordova plugin using that library.
+Please refer to https://github.com/netinhoteixeira/cordova-plugin-signature-view.
+
 ## Caveats
 
 Currently doesn't support screen rotations. Pull requests are welcome!
