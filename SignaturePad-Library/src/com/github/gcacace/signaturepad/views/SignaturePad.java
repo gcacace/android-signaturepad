@@ -214,7 +214,6 @@ public class SignaturePad extends View
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(new TimedPoint(eventX, eventY));
-                setIsEmpty(false);
 
             case MotionEvent.ACTION_MOVE:
                 resetDirtyRect(eventX, eventY);
@@ -225,6 +224,7 @@ public class SignaturePad extends View
                 resetDirtyRect(eventX, eventY);
                 addPoint(new TimedPoint(eventX, eventY));
                 getParent().requestDisallowInterceptTouchEvent(true);
+                setIsEmpty(false);
                 break;
 
             default:
