@@ -1,6 +1,6 @@
 apply plugin: 'android-library'
 
-apply plugin: 'android-library'
+apply plugin: 'android-maven'
 
 dependencies {
     compile 'com.github.castorflex.smoothprogressbar:library:0.2.0'
