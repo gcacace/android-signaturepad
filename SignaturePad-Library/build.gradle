@@ -1,26 +1,91 @@
-apply plugin: 'android-library'
-
-apply plugin: 'android-maven'
+apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
 
 dependencies {
     compile 'com.github.castorflex.smoothprogressbar:library:0.2.0'
 }
 
+Properties properties = new Properties()
+properties.load(project.rootProject.file('bintray.properties').newDataInputStream())
+
 android {
     compileSdkVersion Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
-  buildToolsVersion '20.0.0'
+    buildToolsVersion '21.1.2'
 
     defaultConfig {
         // This should be 14, but is 7 because extra-abc/extra-abs depend on this library
         minSdkVersion 7
         targetSdkVersion Integer.parseInt(project.ANDROID_BUILD_TARGET_SDK_VERSION)
     }
+}
 
-    sourceSets {
-        main {
-            manifest.srcFile 'AndroidManifest.xml'
-            java.srcDirs = ['src']
-            res.srcDirs = ['res']
+bintray {
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+
+    configurations = ['archives']
+    pkg {
+        repo = "maven"
+        name = project.GROUP
+        websiteUrl = project.POM_URL
+        vcsUrl = project.POM_SCM_URL
+        licenses = ["Apache-2.0"]
+        publish = true
+    }
+}
+
+install {
+    repositories.mavenInstaller {
+        // This generates POM.xml with proper parameters
+        pom {
+            project {
+                packaging 'aar'
+
+                // Add your description here
+                name project.POM_DESCRIPTION
+                url project.POM_URL
+
+                // Set your license
+                licenses {
+                    license {
+                        name project.POM_LICENCE_NAME
+                        url project.POM_LICENCE_URL
+                    }
+                }
+                developers {
+                    developer {
+                        id project.POM_DEVELOPER_ID
+                        name project.POM_DEVELOPER_NAME
+                    }
+                }
+                scm {
+                    connection project.POM_SCM_URL
+                    developerConnection project.POM_SCM_CONNECTION
+                    url project.POM_URL
+
+                }
+            }
         }
     }
+}
+
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
 }
