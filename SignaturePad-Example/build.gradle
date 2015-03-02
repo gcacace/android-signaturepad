@@ -21,6 +21,6 @@ android {
 }
 
 dependencies {
-    compile project(":SignaturePad-Library")
+    compile project(":signature-pad")
     compile 'com.android.support:appcompat-v7:21.0.3'
 }
