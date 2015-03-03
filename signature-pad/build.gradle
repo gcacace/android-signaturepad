@@ -28,10 +28,24 @@ bintray {
     pkg {
         repo = "maven"
         name = project.GROUP
+        desc = project.POM_DESCRIPTION
         websiteUrl = project.POM_URL
         vcsUrl = project.POM_SCM_URL
         licenses = ["Apache-2.0"]
         publish = true
+
+        version {
+            gpg {
+                sign = true
+                passphrase = gpgPhrase
+            }
+            mavenCentralSync {
+                sync = true
+                user = properties.getProperty("oss.userToken")
+                password = properties.getProperty("oss.userTokenValue")
+                close = '1'
+            }
+        }
     }
 }
 
@@ -43,7 +57,8 @@ install {
                 packaging 'aar'
 
                 // Add your description here
-                name project.POM_DESCRIPTION
+                description project.POM_DESCRIPTION
+                name project.POM_
                 url project.POM_URL
 
                 // Set your license
