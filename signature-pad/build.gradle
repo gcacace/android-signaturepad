@@ -37,7 +37,7 @@ bintray {
         version {
             gpg {
                 sign = true
-                passphrase = gpgPhrase
+                passphrase = properties.getProperty("bintray.gpg.passphrase")
             }
             mavenCentralSync {
                 sync = true
@@ -58,7 +58,7 @@ install {
 
                 // Add your description here
                 description project.POM_DESCRIPTION
-                name project.POM_
+                name project.POM_NAME
                 url project.POM_URL
 
                 // Set your license
