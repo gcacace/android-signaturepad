@@ -9,6 +9,35 @@ Android Signature Pad is an Android library for drawing smooth signatures. It us
  * Bézier implementation for a smoother line
  * Variable point size based on velocity
  * Customizable pen color and size
+
+##Installation
+
+Latest version of the library can be found on Maven Central.
+
+### For Gradle users
+
+Open your `build.gradle` and make sure that Maven Central repository is declared into `repositories` section:
+```gradle
+   repositories {
+       mavenCentral()
+   }
+```
+Then, include the library as dependency:
+```gradle
+compile 'com.github.gcacace:android-signaturepad:1.0.0'
+```
+
+### For Maven users
+
+Add this dependency to your `pom.xml`:
+```xml
+<dependency>
+  <groupId>com.github.gcacace</groupId>
+  <artifactId>signature-pad</artifactId>
+  <version>1.0.0</version>
+  <type>aar</type>
+</dependency>
+```
  
 ##Usage
 
