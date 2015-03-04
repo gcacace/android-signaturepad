@@ -17,7 +17,7 @@ Android Signature Pad is an Android library for drawing smooth signatures. It us
 1. Add the `SignaturePad` view to the layout you want to show.
     ```xml
 
- <com.gcacace.signaturepad.views.SignaturePad
+ <com.github.gcacace.signaturepad.views.SignaturePad
      xmlns:android="http://schemas.android.com/apk/res/android"
      xmlns:app="http://schemas.android.com/apk/res-auto"
      android:id="@+id/signature_pad"
