@@ -1,8 +1,8 @@
-apply plugin: 'android'
+apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
-    buildToolsVersion '20.0.0'
+    buildToolsVersion '21.1.2'
 
   defaultConfig {
         minSdkVersion 7
@@ -15,19 +15,12 @@ android {
 
     buildTypes {
         release {
-            runProguard false
-        }
-    }
-
-    sourceSets {
-        main {
-            manifest.srcFile 'AndroidManifest.xml'
-            java.srcDirs = ['src']
-            res.srcDirs = ['res']
+            minifyEnabled false
         }
     }
 }
 
 dependencies {
-    compile project(":SignaturePad-Library")
+    compile project(":signature-pad")
+    compile 'com.android.support:appcompat-v7:21.0.3'
 }

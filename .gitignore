@@ -17,6 +17,7 @@ out
 
 #Maven
 target
+bintray.properties
 release.properties
 pom.xml.*
 
