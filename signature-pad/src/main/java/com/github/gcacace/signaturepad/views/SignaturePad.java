@@ -193,7 +193,12 @@ public class SignaturePad extends View
         mLastVelocity = 0;
         mLastWidth = (mMinWidth + mMaxWidth) / 2;
         mPath.reset();
-        mSignatureBitmap = null;
+        
+        if( mSignatureBitmap != null ) {
+            mSignatureBitmap = null;
+            ensureSignatureBitmap();
+        }
+        
         setIsEmpty(true);
 
         invalidate();
