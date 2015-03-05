@@ -24,7 +24,7 @@ Open your `build.gradle` and make sure that Maven Central repository is declared
 ```
 Then, include the library as dependency:
 ```gradle
-compile 'com.github.gcacace:android-signaturepad:1.0.0'
+compile 'com.github.gcacace:signature-pad:1.0.0'
 ```
 
 ### For Maven users
