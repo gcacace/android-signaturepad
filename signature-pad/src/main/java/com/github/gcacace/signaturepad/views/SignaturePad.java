@@ -1,6 +1,7 @@
 package com.github.gcacace.signaturepad.views;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -40,13 +41,8 @@ public class SignaturePad extends View
 
     private Paint mPaint = new Paint();
     private Path mPath = new Path();
-    Bitmap mSignatureBitmap = null;
-    Canvas mSignatureBitmapCanvas = null;
-
-    public interface OnSignedListener {
-        public void onSigned();
-        public void onClear();
-    }
+    private Bitmap mSignatureBitmap = null;
+    private Canvas mSignatureBitmapCanvas = null;
 
     public SignaturePad(Context context, AttributeSet attrs)
     {
@@ -79,7 +75,169 @@ public class SignaturePad extends View
         clear();
     }
 
-    public void addPoint(TimedPoint newPoint) {
+    /**
+     * Set the pen color from a given resource.
+     * If the resource is not found, {@link android.graphics.Color#BLACK} is assumed.
+     *
+     * @param colorRes the color resource.
+     */
+    public void setPenColorRes(int colorRes) {
+        try {
+            setPenColor(getResources().getColor(colorRes));
+        } catch (Resources.NotFoundException ex) {
+            setPenColor(getResources().getColor(Color.BLACK));
+        }
+    }
+
+    /**
+     * Set the pen color from a given color.
+     *
+     * @param color the color.
+     */
+    public void setPenColor(int color) {
+        mPaint.setColor(color);
+    }
+
+    /**
+     * Set the minimum width of the stroke in pixel.
+     *
+     * @param minWidth the width in pixel.
+     */
+    public void setMinWidth(float minWidth) {
+        mMinWidth = minWidth;
+    }
+
+    /**
+     * Set the maximum width of the stroke in pixel.
+     *
+     * @param maxWidth the width in pixel.
+     */
+    public void setMaxWidth(float maxWidth) {
+        mMaxWidth = maxWidth;
+    }
+
+    /**
+     * Set the velocity filter weight.
+     *
+     * @param velocityFilterWeight the weight.
+     */
+    public void setVelocityFilterWeight(float velocityFilterWeight) {
+        mVelocityFilterWeight = velocityFilterWeight;
+    }
+
+    public void clear()
+    {
+        mPoints = new ArrayList<TimedPoint>();
+        mLastVelocity = 0;
+        mLastWidth = (mMinWidth + mMaxWidth) / 2;
+        mPath.reset();
+
+        if( mSignatureBitmap != null ) {
+            mSignatureBitmap = null;
+            ensureSignatureBitmap();
+        }
+
+        setIsEmpty(true);
+
+        invalidate();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event)
+    {
+        float eventX = event.getX();
+        float eventY = event.getY();
+
+        switch (event.getAction())
+        {
+            case MotionEvent.ACTION_DOWN:
+                getParent().requestDisallowInterceptTouchEvent(true);
+                mPoints.clear();
+                mPath.moveTo(eventX, eventY);
+                mLastTouchX = eventX;
+                mLastTouchY = eventY;
+                addPoint(new TimedPoint(eventX, eventY));
+
+            case MotionEvent.ACTION_MOVE:
+                resetDirtyRect(eventX, eventY);
+                addPoint(new TimedPoint(eventX, eventY));
+                break;
+
+            case MotionEvent.ACTION_UP:
+                resetDirtyRect(eventX, eventY);
+                addPoint(new TimedPoint(eventX, eventY));
+                getParent().requestDisallowInterceptTouchEvent(true);
+                setIsEmpty(false);
+                break;
+
+            default:
+                return false;
+        }
+
+        //invalidate();
+        invalidate(
+                (int) (mDirtyRect.left - mMaxWidth),
+                (int) (mDirtyRect.top - mMaxWidth),
+                (int) (mDirtyRect.right + mMaxWidth),
+                (int) (mDirtyRect.bottom + mMaxWidth));
+
+        return true;
+    }
+
+    @Override protected void onDraw(Canvas canvas) {
+        if(mSignatureBitmap != null) {
+            canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
+        }
+    }
+
+    public void setOnSignedListener(OnSignedListener listener) {
+        mOnSignedListener = listener;
+    }
+
+    public boolean isEmpty() {
+        return mIsEmpty;
+    }
+
+    public Bitmap getSignatureBitmap() {
+        Bitmap originalBitmap = getTransparentSignatureBitmap();
+        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(whiteBgBitmap);
+        canvas.drawColor(Color.WHITE);
+        canvas.drawBitmap(originalBitmap, 0, 0, null);
+        return whiteBgBitmap;
+    }
+
+    public void setSignatureBitmap(Bitmap signature) {
+        clear();
+        ensureSignatureBitmap();
+
+        RectF tempSrc = new RectF();
+        RectF tempDst = new RectF();
+
+        int dwidth = signature.getWidth();
+        int dheight = signature.getHeight();
+        int vwidth = getWidth();
+        int vheight = getHeight();
+
+        // Generate the required transform.
+        tempSrc.set(0, 0, dwidth, dheight);
+        tempDst.set(0, 0, vwidth, vheight);
+
+        Matrix drawMatrix = new Matrix();
+        drawMatrix.setRectToRect(tempSrc, tempDst, Matrix.ScaleToFit.CENTER);
+
+        Canvas canvas = new Canvas(mSignatureBitmap);
+        canvas.drawBitmap(signature, drawMatrix, null);
+        setIsEmpty(false);
+        invalidate();
+    }
+
+    public Bitmap getTransparentSignatureBitmap() {
+        ensureSignatureBitmap();
+        return mSignatureBitmap;
+    }
+
+    private void addPoint(TimedPoint newPoint) {
         mPoints.add(newPoint);
         if (mPoints.size() > 2) {
             // To reduce the initial lag make it work with 3 mPoints
@@ -154,13 +312,7 @@ public class SignaturePad extends View
         mPaint.setStrokeWidth(originalWidth);
     }
 
-    @Override protected void onDraw(Canvas canvas) {
-        if(mSignatureBitmap != null) {
-            canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
-        }
-    }
-
-    public ControlTimedPoints calculateCurveControlPoints(TimedPoint s1, TimedPoint s2 ,TimedPoint s3) {
+    private ControlTimedPoints calculateCurveControlPoints(TimedPoint s1, TimedPoint s2 ,TimedPoint s3) {
         float dx1 = s1.x - s2.x;
         float dy1 = s1.y - s2.y;
         float dx2 = s2.x - s3.x;
@@ -183,72 +335,16 @@ public class SignaturePad extends View
         return new ControlTimedPoints(new TimedPoint(m1.x + tx, m1.y + ty), new TimedPoint(m2.x + tx, m2.y + ty));
     }
 
-    public float strokeWidth(float velocity) {
+    private float strokeWidth(float velocity) {
         return Math.max(mMaxWidth / (velocity + 1), mMinWidth);
-    }
-
-    public void clear()
-    {
-        mPoints = new ArrayList<TimedPoint>();
-        mLastVelocity = 0;
-        mLastWidth = (mMinWidth + mMaxWidth) / 2;
-        mPath.reset();
-        
-        if( mSignatureBitmap != null ) {
-            mSignatureBitmap = null;
-            ensureSignatureBitmap();
-        }
-        
-        setIsEmpty(true);
-
-        invalidate();
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event)
-    {
-        float eventX = event.getX();
-        float eventY = event.getY();
-
-        switch (event.getAction())
-        {
-            case MotionEvent.ACTION_DOWN:
-                getParent().requestDisallowInterceptTouchEvent(true);
-                mPoints.clear();
-                mPath.moveTo(eventX, eventY);
-                mLastTouchX = eventX;
-                mLastTouchY = eventY;
-                addPoint(new TimedPoint(eventX, eventY));
-
-            case MotionEvent.ACTION_MOVE:
-                resetDirtyRect(eventX, eventY);
-                addPoint(new TimedPoint(eventX, eventY));
-                break;
-
-            case MotionEvent.ACTION_UP:
-                resetDirtyRect(eventX, eventY);
-                addPoint(new TimedPoint(eventX, eventY));
-                getParent().requestDisallowInterceptTouchEvent(true);
-                setIsEmpty(false);
-                break;
-
-            default:
-                return false;
-        }
-
-        //invalidate();
-        invalidate(
-                (int) (mDirtyRect.left - mMaxWidth),
-                (int) (mDirtyRect.top - mMaxWidth),
-                (int) (mDirtyRect.right + mMaxWidth),
-                (int) (mDirtyRect.bottom + mMaxWidth));
-
-        return true;
     }
 
     /**
      * Called when replaying history to ensure the dirty region includes all
      * mPoints.
+     *
+     * @param historicalX the previous x coordinate.
+     * @param historicalY the previous y coordinate.
      */
     private void expandDirtyRect(float historicalX, float historicalY) {
         if (historicalX < mDirtyRect.left) {
@@ -265,23 +361,17 @@ public class SignaturePad extends View
 
     /**
      * Resets the dirty region when the motion event occurs.
+     *
+     * @param eventX the event x coordinate.
+     * @param eventY the event y coordinate.
      */
     private void resetDirtyRect(float eventX, float eventY) {
 
-        // The mLastTouchX and mLastTouchY were set when the ACTION_DOWN
-        // motion event occurred.
+        // The mLastTouchX and mLastTouchY were set when the ACTION_DOWN motion event occurred.
         mDirtyRect.left = Math.min(mLastTouchX, eventX);
         mDirtyRect.right = Math.max(mLastTouchX, eventX);
         mDirtyRect.top = Math.min(mLastTouchY, eventY);
         mDirtyRect.bottom = Math.max(mLastTouchY, eventY);
-    }
-
-    public void setOnSignedListener(OnSignedListener listener) {
-        mOnSignedListener = listener;
-    }
-
-    public boolean isEmpty() {
-        return mIsEmpty;
     }
 
     private void setIsEmpty(boolean newValue) {
@@ -298,50 +388,16 @@ public class SignaturePad extends View
         }
     }
 
-    public Bitmap getSignatureBitmap() {
-        Bitmap originalBitmap = getTransparentSignatureBitmap();
-        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(whiteBgBitmap);
-        canvas.drawColor(Color.WHITE);
-        canvas.drawBitmap(originalBitmap, 0, 0, null);
-        return whiteBgBitmap;
-    }
-
-    public Bitmap getTransparentSignatureBitmap() {
-        ensureSignatureBitmap();
-        return mSignatureBitmap;
-    }
-
-    public void setSignatureBitmap(Bitmap signature) {
-        clear();
-        ensureSignatureBitmap();
-
-        RectF tempSrc = new RectF();
-        RectF tempDst = new RectF();
-
-        int dwidth = signature.getWidth();
-        int dheight = signature.getHeight();
-        int vwidth = getWidth();
-        int vheight = getHeight();
-
-        // Generate the required transform.
-        tempSrc.set(0, 0, dwidth, dheight);
-        tempDst.set(0, 0, vwidth, vheight);
-
-        Matrix drawMatrix = new Matrix();
-        drawMatrix.setRectToRect(tempSrc, tempDst, Matrix.ScaleToFit.CENTER);
-
-        Canvas canvas = new Canvas(mSignatureBitmap);
-        canvas.drawBitmap(signature, drawMatrix, null);
-        setIsEmpty(false);
-        invalidate();
-    }
-
     private void ensureSignatureBitmap() {
         if (mSignatureBitmap == null) {
             mSignatureBitmap = Bitmap.createBitmap(getWidth(), getHeight(),
                     Bitmap.Config.ARGB_8888);
             mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
         }
+    }
+
+    public interface OnSignedListener {
+        public void onSigned();
+        public void onClear();
     }
 }

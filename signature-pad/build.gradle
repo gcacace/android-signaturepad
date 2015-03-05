@@ -27,7 +27,7 @@ bintray {
     configurations = ['archives']
     pkg {
         repo = "maven"
-        name = project.GROUP
+        name = project.POM_ARTIFACT_ID
         desc = project.POM_DESCRIPTION
         websiteUrl = project.POM_URL
         vcsUrl = project.POM_SCM_URL
