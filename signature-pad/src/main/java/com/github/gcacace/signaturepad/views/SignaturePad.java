@@ -22,8 +22,7 @@ import com.github.gcacace.signaturepad.utils.TimedPoint;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SignaturePad extends View
-{
+public class SignaturePad extends View {
     //View state
     private List<TimedPoint> mPoints;
     private boolean mIsEmpty;
@@ -44,8 +43,7 @@ public class SignaturePad extends View
     private Bitmap mSignatureBitmap = null;
     private Canvas mSignatureBitmapCanvas = null;
 
-    public SignaturePad(Context context, AttributeSet attrs)
-    {
+    public SignaturePad(Context context, AttributeSet attrs) {
         super(context, attrs);
 
         TypedArray a = context.getTheme().obtainStyledAttributes(
@@ -125,14 +123,13 @@ public class SignaturePad extends View
         mVelocityFilterWeight = velocityFilterWeight;
     }
 
-    public void clear()
-    {
+    public void clear() {
         mPoints = new ArrayList<TimedPoint>();
         mLastVelocity = 0;
         mLastWidth = (mMinWidth + mMaxWidth) / 2;
         mPath.reset();
 
-        if( mSignatureBitmap != null ) {
+        if (mSignatureBitmap != null) {
             mSignatureBitmap = null;
             ensureSignatureBitmap();
         }
@@ -143,13 +140,11 @@ public class SignaturePad extends View
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent event)
-    {
+    public boolean onTouchEvent(MotionEvent event) {
         float eventX = event.getX();
         float eventY = event.getY();
 
-        switch (event.getAction())
-        {
+        switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
@@ -184,8 +179,9 @@ public class SignaturePad extends View
         return true;
     }
 
-    @Override protected void onDraw(Canvas canvas) {
-        if(mSignatureBitmap != null) {
+    @Override
+    protected void onDraw(Canvas canvas) {
+        if (mSignatureBitmap != null) {
             canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
         }
     }
@@ -235,6 +231,44 @@ public class SignaturePad extends View
     public Bitmap getTransparentSignatureBitmap() {
         ensureSignatureBitmap();
         return mSignatureBitmap;
+    }
+
+    public Bitmap getTransparentSignatureBitmap(boolean trimBlankSpace) {
+
+        if (!trimBlankSpace) {
+            return getTransparentSignatureBitmap();
+        }
+
+        ensureSignatureBitmap();
+
+        int imgHeight = mSignatureBitmap.getHeight();
+        int imgWidth = mSignatureBitmap.getWidth();
+
+        // Trim width
+        int width = 0;
+        for (int i = 0; i < imgHeight; i++) {
+            for (int j = imgWidth - 1; j >= 0; j--) {
+                if (mSignatureBitmap.getPixel(j, i) != Color.TRANSPARENT &&
+                        j > width) {
+                    width = j;
+                    break;
+                }
+            }
+        }
+
+        // Trim height
+        int height = 0;
+        for (int i = 0; i < imgWidth; i++) {
+            for (int j = imgHeight - 1; j >= 0; j--) {
+                if (mSignatureBitmap.getPixel(i, j) != Color.TRANSPARENT &&
+                        j > height) {
+                    height = j;
+                    break;
+                }
+            }
+        }
+
+        return Bitmap.createBitmap(mSignatureBitmap, 0, 0, width, height);
     }
 
     private void addPoint(TimedPoint newPoint) {
@@ -312,7 +346,7 @@ public class SignaturePad extends View
         mPaint.setStrokeWidth(originalWidth);
     }
 
-    private ControlTimedPoints calculateCurveControlPoints(TimedPoint s1, TimedPoint s2 ,TimedPoint s3) {
+    private ControlTimedPoints calculateCurveControlPoints(TimedPoint s1, TimedPoint s2, TimedPoint s3) {
         float dx1 = s1.x - s2.x;
         float dy1 = s1.y - s2.y;
         float dx2 = s2.x - s3.x;
@@ -321,13 +355,13 @@ public class SignaturePad extends View
         TimedPoint m1 = new TimedPoint((s1.x + s2.x) / 2.0f, (s1.y + s2.y) / 2.0f);
         TimedPoint m2 = new TimedPoint((s2.x + s3.x) / 2.0f, (s2.y + s3.y) / 2.0f);
 
-        float l1 = (float) Math.sqrt(dx1*dx1 + dy1*dy1);
-        float l2 = (float) Math.sqrt(dx2*dx2 + dy2*dy2);
+        float l1 = (float) Math.sqrt(dx1 * dx1 + dy1 * dy1);
+        float l2 = (float) Math.sqrt(dx2 * dx2 + dy2 * dy2);
 
         float dxm = (m1.x - m2.x);
         float dym = (m1.y - m2.y);
         float k = l2 / (l1 + l2);
-        TimedPoint cm = new TimedPoint(m2.x + dxm*k, m2.y + dym*k);
+        TimedPoint cm = new TimedPoint(m2.x + dxm * k, m2.y + dym * k);
 
         float tx = s2.x - cm.x;
         float ty = s2.y - cm.y;
@@ -375,11 +409,11 @@ public class SignaturePad extends View
     }
 
     private void setIsEmpty(boolean newValue) {
-        if(mIsEmpty != newValue) {
+        if (mIsEmpty != newValue) {
             mIsEmpty = newValue;
 
-            if(mOnSignedListener != null) {
-                if(mIsEmpty) {
+            if (mOnSignedListener != null) {
+                if (mIsEmpty) {
                     mOnSignedListener.onClear();
                 } else {
                     mOnSignedListener.onSigned();
@@ -398,6 +432,7 @@ public class SignaturePad extends View
 
     public interface OnSignedListener {
         public void onSigned();
+
         public void onClear();
     }
 }
