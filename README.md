@@ -1,3 +1,25 @@
+**NOTICE THIS REPO IS A FORK FROM THE ORIGINAL ONE: [android-signaturepad](https://github.com/gcacace/android-signaturepad)**
+
+**What's added in this fork?**
+
+It adds one `set` and some `get` methods (the equivalents to the ones already defined to work with bitmaps) for getting the signature encoded in a **Base64 string format**.
+
+The idea is to make it easier when sending/getting signatures to/from a server through a webservice, avoiding the need to store them as images and write some logic on the server side to manage them.
+
+Public methods added:
+
+* `getSignatureBase64Encoded()`
+* `getTransparentSignatureBase64Encoded()`
+* `getTransparentSignatureBase64Encoded(boolean trimBlankSpace)`
+* `setSignatureBase64Encoded(String encodedSignature)`
+
+Private methods added:
+
+* `bitmapToBase64(Bitmap bitmap)`: given a `Bitmap` object, returns it encoded as a Base64 string. It uses `Bitmap.CompressFormat.PNG` as a default (that could be easily parametrized anyway).
+* `base64EncodedStringToBitmap(String encodedString)`: reverse case, given a Base64 encoded string, returns the `Bitmap` object.
+
+====================
+
 Android Signature Pad
 ====================
 
