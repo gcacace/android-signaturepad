@@ -24,7 +24,7 @@ Open your `build.gradle` and make sure that Maven Central repository is declared
 ```
 Then, include the library as dependency:
 ```gradle
-compile 'com.github.gcacace:signature-pad:1.0.1'
+compile 'com.github.gcacace:signature-pad:1.0.2'
 ```
 
 ### For Maven users
@@ -34,7 +34,7 @@ Add this dependency to your `pom.xml`:
 <dependency>
   <groupId>com.github.gcacace</groupId>
   <artifactId>signature-pad</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <type>aar</type>
 </dependency>
 ```
