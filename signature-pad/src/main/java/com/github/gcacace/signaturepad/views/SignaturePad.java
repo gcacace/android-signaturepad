@@ -409,15 +409,12 @@ public class SignaturePad extends View {
     }
 
     private void setIsEmpty(boolean newValue) {
-        if (mIsEmpty != newValue) {
-            mIsEmpty = newValue;
-
-            if (mOnSignedListener != null) {
-                if (mIsEmpty) {
-                    mOnSignedListener.onClear();
-                } else {
-                    mOnSignedListener.onSigned();
-                }
+        mIsEmpty = newValue;
+        if (mOnSignedListener != null) {
+            if (mIsEmpty) {
+                mOnSignedListener.onClear();
+            } else {
+                mOnSignedListener.onSigned();
             }
         }
     }
