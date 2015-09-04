@@ -56,8 +56,8 @@ Add this dependency to your `pom.xml`:
      />
     ```
 2. Configure attributes.
- * `minWidth` - The minimum width of the stroke (default: 3px).
- * `maxWidth` - The maximum width of the stroke (default: 7px).
+ * `minWidth` - The minimum width of the stroke (default: 3dp).
+ * `maxWidth` - The maximum width of the stroke (default: 7dp).
  * `penColor` - The color of the stroke (default: Color.BLACK).
  * `velocityFilterWeight` - Weight used to modify new velocity based on the previous velocity (default: 0.9).
 

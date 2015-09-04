@@ -11,6 +11,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -33,8 +34,8 @@ public class SignaturePad extends View {
     private RectF mDirtyRect;
 
     //Configurable parameters
-    private float mMinWidth;
-    private float mMaxWidth;
+    private int mMinWidth;
+    private int mMaxWidth;
     private float mVelocityFilterWeight;
     private OnSignedListener mOnSignedListener;
 
@@ -53,8 +54,8 @@ public class SignaturePad extends View {
 
         //Configurable parameters
         try {
-            mMinWidth = a.getFloat(R.styleable.SignaturePad_minWidth, 3f);
-            mMaxWidth = a.getFloat(R.styleable.SignaturePad_maxWidth, 7f);
+            mMinWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_minWidth, convertDpToPx(3));
+            mMaxWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_maxWidth, convertDpToPx(7));
             mVelocityFilterWeight = a.getFloat(R.styleable.SignaturePad_velocityFilterWeight, 0.9f);
             mPaint.setColor(a.getColor(R.styleable.SignaturePad_penColor, Color.BLACK));
         } finally {
@@ -99,19 +100,19 @@ public class SignaturePad extends View {
     /**
      * Set the minimum width of the stroke in pixel.
      *
-     * @param minWidth the width in pixel.
+     * @param minWidth the width in dp.
      */
     public void setMinWidth(float minWidth) {
-        mMinWidth = minWidth;
+        mMinWidth = convertDpToPx(minWidth);
     }
 
     /**
      * Set the maximum width of the stroke in pixel.
      *
-     * @param maxWidth the width in pixel.
+     * @param maxWidth the width in dp.
      */
     public void setMaxWidth(float maxWidth) {
-        mMaxWidth = maxWidth;
+        mMaxWidth = convertDpToPx(maxWidth);
     }
 
     /**
@@ -210,14 +211,14 @@ public class SignaturePad extends View {
         RectF tempSrc = new RectF();
         RectF tempDst = new RectF();
 
-        int dwidth = signature.getWidth();
-        int dheight = signature.getHeight();
-        int vwidth = getWidth();
-        int vheight = getHeight();
+        int dWidth = signature.getWidth();
+        int dHeight = signature.getHeight();
+        int vWidth = getWidth();
+        int vHeight = getHeight();
 
         // Generate the required transform.
-        tempSrc.set(0, 0, dwidth, dheight);
-        tempDst.set(0, 0, vwidth, vheight);
+        tempSrc.set(0, 0, dWidth, dHeight);
+        tempDst.set(0, 0, vWidth, vHeight);
 
         Matrix drawMatrix = new Matrix();
         drawMatrix.setRectToRect(tempSrc, tempDst, Matrix.ScaleToFit.CENTER);
@@ -425,6 +426,10 @@ public class SignaturePad extends View {
                     Bitmap.Config.ARGB_8888);
             mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
         }
+    }
+
+    private int convertDpToPx(float dp){
+        return Math.round(dp*(getResources().getDisplayMetrics().xdpi/ DisplayMetrics.DENSITY_DEFAULT));
     }
 
     public interface OnSignedListener {
