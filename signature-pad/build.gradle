@@ -3,7 +3,7 @@ apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
 dependencies {
-    compile 'com.github.castorflex.smoothprogressbar:library:0.2.0'
+
 }
 
 Properties properties = new Properties()
