@@ -245,31 +245,77 @@ public class SignaturePad extends View {
         int imgHeight = mSignatureBitmap.getHeight();
         int imgWidth = mSignatureBitmap.getWidth();
 
-        // Trim width
-        int width = 0;
-        for (int i = 0; i < imgHeight; i++) {
-            for (int j = imgWidth - 1; j >= 0; j--) {
-                if (mSignatureBitmap.getPixel(j, i) != Color.TRANSPARENT &&
-                        j > width) {
-                    width = j;
+        int backgroundColor = Color.TRANSPARENT;
+
+        int xMin = Integer.MAX_VALUE,
+            xMax = Integer.MIN_VALUE,
+            yMin = Integer.MAX_VALUE,
+            yMax = Integer.MIN_VALUE;
+
+        boolean foundPixel = false;
+
+        // Find xMin
+        for (int x = 0; x < imgWidth; x++) {
+            boolean stop = false;
+            for (int y = 0; y < imgHeight; y++) {
+                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
+                    xMin = x;
+                    stop = true;
+                    foundPixel = true;
                     break;
                 }
             }
+            if (stop)
+                break;
         }
 
-        // Trim height
-        int height = 0;
-        for (int i = 0; i < imgWidth; i++) {
-            for (int j = imgHeight - 1; j >= 0; j--) {
-                if (mSignatureBitmap.getPixel(i, j) != Color.TRANSPARENT &&
-                        j > height) {
-                    height = j;
+        // Image is empty...
+        if (!foundPixel)
+            return null;
+
+        // Find yMin
+        for (int y = 0; y < imgHeight; y++) {
+            boolean stop = false;
+            for (int x = xMin; x < imgWidth; x++) {
+                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
+                    yMin = y;
+                    stop = true;
                     break;
                 }
             }
+            if (stop)
+                break;
         }
 
-        return Bitmap.createBitmap(mSignatureBitmap, 0, 0, width, height);
+        // Find xMax
+        for (int x = imgWidth - 1; x >= xMin; x--) {
+            boolean stop = false;
+            for (int y = yMin; y < imgHeight; y++) {
+                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
+                    xMax = x;
+                    stop = true;
+                    break;
+                }
+            }
+            if (stop)
+                break;
+        }
+
+        // Find yMax
+        for (int y = imgHeight - 1; y >= yMin; y--) {
+            boolean stop = false;
+            for (int x = xMin; x <= xMax; x++) {
+                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
+                    yMax = y;
+                    stop = true;
+                    break;
+                }
+            }
+            if (stop)
+                break;
+        }
+
+      return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
     }
 
     private void addPoint(TimedPoint newPoint) {
