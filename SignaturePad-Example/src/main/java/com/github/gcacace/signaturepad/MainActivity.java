@@ -31,6 +31,11 @@ public class MainActivity extends Activity {
         mSignaturePad = (SignaturePad) findViewById(R.id.signature_pad);
         mSignaturePad.setOnSignedListener(new SignaturePad.OnSignedListener() {
             @Override
+            public void onStartSigning() {
+                Toast.makeText(MainActivity.this, "OnStartSigning", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
             public void onSigned() {
                 mSaveButton.setEnabled(true);
                 mClearButton.setEnabled(true);

@@ -84,7 +84,7 @@ public class SignaturePad extends View {
         try {
             setPenColor(getResources().getColor(colorRes));
         } catch (Resources.NotFoundException ex) {
-            setPenColor(getResources().getColor(Color.BLACK));
+            setPenColor(Color.parseColor("#000000"));
         }
     }
 
@@ -125,7 +125,7 @@ public class SignaturePad extends View {
     }
 
     public void clear() {
-        mPoints = new ArrayList<TimedPoint>();
+        mPoints = new ArrayList<>();
         mLastVelocity = 0;
         mLastWidth = (mMinWidth + mMaxWidth) / 2;
         mPath.reset();
@@ -156,6 +156,7 @@ public class SignaturePad extends View {
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(new TimedPoint(eventX, eventY));
+                if(mOnSignedListener != null) mOnSignedListener.onStartSigning();
 
             case MotionEvent.ACTION_MOVE:
                 resetDirtyRect(eventX, eventY);
@@ -482,8 +483,8 @@ public class SignaturePad extends View {
     }
 
     public interface OnSignedListener {
-        public void onSigned();
-
-        public void onClear();
+        void onStartSigning();
+        void onSigned();
+        void onClear();
     }
 }
