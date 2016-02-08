@@ -89,6 +89,10 @@ Add this dependency to your `pom.xml`:
 Thanks to [netinhoteixeira](https://github.com/netinhoteixeira/), there is a Cordova plugin using that library.
 Please refer to https://github.com/netinhoteixeira/cordova-plugin-signature-view.
 
+## NativeScript Plugin
+Thanks to [bradmartin](https://github.com/bradmartin), there is a NativeScript plugin.
+Please refer to [https://github.com/bradmartin/nativescript-signaturepad](https://github.com/bradmartin/nativescript-signaturepad).
+
 ## Caveats
 
 Currently doesn't support screen rotations. Pull requests are welcome!
