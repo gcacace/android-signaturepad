@@ -412,6 +412,7 @@ public class SignaturePad extends View {
         float dxm = (m1.x - m2.x);
         float dym = (m1.y - m2.y);
         float k = l2 / (l1 + l2);
+        if (Float.isNaN(k)) k = 0.0f;
         TimedPoint cm = new TimedPoint(m2.x + dxm * k, m2.y + dym * k);
 
         float tx = s2.x - cm.x;
