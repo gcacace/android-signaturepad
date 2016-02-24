@@ -62,10 +62,15 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View view) {
                 Bitmap signatureBitmap = mSignaturePad.getSignatureBitmap();
-                if(addSignatureToGallery(signatureBitmap)) {
+                if(addJpgSignatureToGallery(signatureBitmap)) {
                     Toast.makeText(MainActivity.this, "Signature saved into the Gallery", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(MainActivity.this, "Unable to store the signature", Toast.LENGTH_SHORT).show();
+                }
+                if(addSvgSignatureToGallery(mSignaturePad.getSignatureSvg())) {
+                    Toast.makeText(MainActivity.this, "SVG Signature saved into the Gallery", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "Unable to store the SVG signature", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -91,15 +96,37 @@ public class MainActivity extends Activity {
         stream.close();
     }
 
-    public boolean addSignatureToGallery(Bitmap signature) {
+    public boolean addJpgSignatureToGallery(Bitmap signature) {
         boolean result = false;
         try {
             File photo = new File(getAlbumStorageDir("SignaturePad"), String.format("Signature_%d.jpg", System.currentTimeMillis()));
             saveBitmapToJPG(signature, photo);
-            Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            Uri contentUri = Uri.fromFile(photo);
-            mediaScanIntent.setData(contentUri);
-            MainActivity.this.sendBroadcast(mediaScanIntent);
+            scanMediaFile(photo);
+            result = true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    private void scanMediaFile(File photo) {
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        Uri contentUri = Uri.fromFile(photo);
+        mediaScanIntent.setData(contentUri);
+        MainActivity.this.sendBroadcast(mediaScanIntent);
+    }
+
+    public boolean addSvgSignatureToGallery(String signatureSvg) {
+        boolean result = false;
+        try {
+            File svgFile = new File(getAlbumStorageDir("SignaturePad"), String.format("Signature_%d.svg", System.currentTimeMillis()));
+            OutputStream stream = new FileOutputStream(svgFile);
+            OutputStreamWriter writer  = new OutputStreamWriter(stream);
+            writer.write(signatureSvg);
+            writer.close();
+            stream.flush();
+            stream.close();
+            scanMediaFile(svgFile);
             result = true;
         } catch (IOException e) {
             e.printStackTrace();
