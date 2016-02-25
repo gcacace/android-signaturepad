@@ -92,7 +92,7 @@ public class SvgBuilder {
                 .append("stroke-width=\"")
                 .append(strokeWidth)
                 .append("\" ")
-                .append("d=\"M ")
+                .append("d=\"M")
                 .append(startPoint);
         mCurrentPathStrokeWidth = strokeWidth;
         mCurrentPathLastPoint = startPoint;
@@ -100,7 +100,7 @@ public class SvgBuilder {
 
     private void addCubicBezierCurve(final Point controlPoint1, final Point controlPoint2, final Point endPoint) {
         mSvgBuilder
-                .append(" C ")
+                .append("C")
                 .append(controlPoint1)
                 .append(" ")
                 .append(controlPoint2)
