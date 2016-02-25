@@ -7,7 +7,8 @@ dependencies {
 }
 
 Properties properties = new Properties()
-properties.load(project.rootProject.file('bintray.properties').newDataInputStream())
+final def bintrayPropertiesFile = project.rootProject.file('bintray.properties')
+if (bintrayPropertiesFile.exists()) properties.load(bintrayPropertiesFile.newDataInputStream())
 
 android {
     compileSdkVersion Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
