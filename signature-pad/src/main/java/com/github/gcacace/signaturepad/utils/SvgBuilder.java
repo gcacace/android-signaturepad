@@ -115,7 +115,7 @@ public class SvgBuilder {
                 .append("stroke-linejoin=\"round\" ")
                 .append("stroke-linecap=\"round\" ")
                 .append("fill=\"none\" ")
-                .append("stroke=\"black\" ")
+                .append("stroke=\"#000\" ")
                 .append("/>");
     }
 
