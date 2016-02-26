@@ -31,7 +31,7 @@
                 android:textColor="@android:color/darker_gray"
                 android:layout_marginBottom="16dp"
                 android:layout_alignParentBottom="true"
-                android:text="I agree the terms and conditions." />
+                android:text="@string/agreement" />
 
         <com.github.gcacace.signaturepad.views.SignaturePad
                 android:layout_width="fill_parent"
@@ -52,7 +52,7 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Clear Pad"
+                android:text="@string/clear_pad"
                 android:enabled="false" />
 
         <Button
@@ -60,7 +60,7 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Save Signature"
+                android:text="@string/save_signature"
                 android:enabled="false" />
     </LinearLayout>
 
