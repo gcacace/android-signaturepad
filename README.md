@@ -101,7 +101,7 @@ Currently doesn't support screen rotations. Pull requests are welcome!
 
 ## License
 
-    Copyright 2014 Gianluca Cacace
+    Copyright 2014-2016 Gianluca Cacace
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
