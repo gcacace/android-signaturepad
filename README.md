@@ -9,6 +9,7 @@ Android Signature Pad is an Android library for drawing smooth signatures. It us
  * Bézier implementation for a smoother line
  * Variable point size based on velocity
  * Customizable pen color and size
+ * Bitmap and SVG support
 
 ##Installation
 
@@ -80,9 +81,10 @@ Add this dependency to your `pom.xml`:
  });
   ```
  
-4. Get signature Bitmap
+4. Get signature data
  * `getSignatureBitmap()` - A signature bitmap with a white background.
  * `getTransparentSignatureBitmap()` - A signature bitmap with a transparent background.
+ * `getSignatureSvg()` - A signature Scalable Vector Graphics document.
 
 ## Cordova Plugin
 
