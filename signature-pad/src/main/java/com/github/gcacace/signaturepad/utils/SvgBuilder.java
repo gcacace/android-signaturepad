@@ -59,13 +59,28 @@ public class SvgBuilder {
         if (isPathStarted()) {
             endPath();
         }
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n" +
-                "<svg xmlns=\"http://www.w3.org/2000/svg\" " +
-                "height=\"" + height +
-                "\" width=\"" + width +
-                "\">" +
-                mSvgBuilder.toString() +
-                "</svg>";
+        return (new StringBuilder())
+                .append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
+                .append("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" ")
+                .append("\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">")
+                .append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" ")
+                .append("height=\"")
+                .append(height)
+                .append("\" ")
+                .append("width=\"")
+                .append(width)
+                .append("\">")
+                .append("<defs><style type=\"text/css\"><![CDATA[")
+                .append("path {")
+                .append("stroke-linejoin: round;")
+                .append("stroke-linecap: round;")
+                .append("fill: none;")
+                .append("stroke: black;")
+                .append("}")
+                .append("]]></style></defs>")
+                .append(mSvgBuilder)
+                .append("</svg>")
+                .toString();
     }
 
     public SvgBuilder append(final Bezier curve, final float strokeWidth) {
@@ -110,13 +125,7 @@ public class SvgBuilder {
     }
 
     private void endPath() {
-        mSvgBuilder
-                .append("\" ")
-                .append("stroke-linejoin=\"round\" ")
-                .append("stroke-linecap=\"round\" ")
-                .append("fill=\"none\" ")
-                .append("stroke=\"#000\" ")
-                .append("/>");
+        mSvgBuilder.append("\"/>");
     }
 
     private boolean isPathStarted() {
