@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
-    buildToolsVersion '21.1.2'
+    buildToolsVersion project.ANDROID_BUILD_TOOLS_VERSION
 
   defaultConfig {
         minSdkVersion 8
@@ -22,5 +22,5 @@ android {
 
 dependencies {
     compile project(":signature-pad")
-    compile 'com.android.support:appcompat-v7:21.0.3'
+    compile 'com.android.support:appcompat-v7:23.2.0'
 }
