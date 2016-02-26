@@ -18,6 +18,7 @@ import android.view.View;
 import com.github.gcacace.signaturepad.R;
 import com.github.gcacace.signaturepad.utils.Bezier;
 import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
+import com.github.gcacace.signaturepad.utils.SvgBuilder;
 import com.github.gcacace.signaturepad.utils.TimedPoint;
 
 import java.util.ArrayList;
@@ -32,6 +33,8 @@ public class SignaturePad extends View {
     private float mLastVelocity;
     private float mLastWidth;
     private RectF mDirtyRect;
+
+    private final SvgBuilder mSvgBuilder = new SvgBuilder();
 
     //Configurable parameters
     private int mMinWidth;
@@ -125,6 +128,7 @@ public class SignaturePad extends View {
     }
 
     public void clear() {
+        mSvgBuilder.clear();
         mPoints = new ArrayList<>();
         mLastVelocity = 0;
         mLastWidth = (mMinWidth + mMaxWidth) / 2;
@@ -197,6 +201,12 @@ public class SignaturePad extends View {
 
     public boolean isEmpty() {
         return mIsEmpty;
+    }
+
+    public String getSignatureSvg() {
+        int width = getTransparentSignatureBitmap().getWidth();
+        int height = getTransparentSignatureBitmap().getHeight();
+        return mSvgBuilder.build(width, height);
     }
 
     public Bitmap getSignatureBitmap() {
@@ -364,6 +374,7 @@ public class SignaturePad extends View {
     }
 
     private void addBezier(Bezier curve, float startWidth, float endWidth) {
+        mSvgBuilder.append(curve, (startWidth + endWidth) / 2);
         ensureSignatureBitmap();
         float originalWidth = mPaint.getStrokeWidth();
         float widthDelta = endWidth - startWidth;
@@ -412,6 +423,7 @@ public class SignaturePad extends View {
         float dxm = (m1.x - m2.x);
         float dym = (m1.y - m2.y);
         float k = l2 / (l1 + l2);
+        if (Float.isNaN(k)) k = 0.0f;
         TimedPoint cm = new TimedPoint(m2.x + dxm * k, m2.y + dym * k);
 
         float tx = s2.x - cm.x;
