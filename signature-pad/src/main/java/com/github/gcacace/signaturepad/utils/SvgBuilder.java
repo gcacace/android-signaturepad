@@ -42,7 +42,7 @@ public class SvgBuilder {
         }
     }
 
-    private final StringBuilder mSvgBuilder = new StringBuilder();
+    private final StringBuilder mSvgPathsBuilder = new StringBuilder();
     private Point mCurrentPathLastPoint = null;
     private Integer mCurrentPathStrokeWidth = null;
 
@@ -50,7 +50,7 @@ public class SvgBuilder {
     }
 
     public void clear() {
-        mSvgBuilder.setLength(0);
+        mSvgPathsBuilder.setLength(0);
         mCurrentPathLastPoint = null;
         mCurrentPathStrokeWidth = null;
     }
@@ -59,13 +59,25 @@ public class SvgBuilder {
         if (isPathStarted()) {
             endPath();
         }
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n" +
-                "<svg xmlns=\"http://www.w3.org/2000/svg\" " +
-                "height=\"" + height +
-                "\" width=\"" + width +
-                "\">" +
-                mSvgBuilder.toString() +
-                "</svg>";
+        return (new StringBuilder())
+                .append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
+                .append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.2\" baseProfile=\"tiny\" ")
+                .append("height=\"")
+                .append(height)
+                .append("\" ")
+                .append("width=\"")
+                .append(width)
+                .append("\">")
+                .append("<g ")
+                .append("stroke-linejoin=\"round\" ")
+                .append("stroke-linecap=\"round\" ")
+                .append("fill=\"none\" ")
+                .append("stroke=\"black\"")
+                .append(">")
+                .append(mSvgPathsBuilder)
+                .append("</g>")
+                .append("</svg>")
+                .toString();
     }
 
     public SvgBuilder append(final Bezier curve, final float strokeWidth) {
@@ -87,7 +99,7 @@ public class SvgBuilder {
     }
 
     private void startNewPath(final Point startPoint, final Integer strokeWidth) {
-        mSvgBuilder
+        mSvgPathsBuilder
                 .append("<path ")
                 .append("stroke-width=\"")
                 .append(strokeWidth)
@@ -99,7 +111,7 @@ public class SvgBuilder {
     }
 
     private void addCubicBezierCurve(final Point controlPoint1, final Point controlPoint2, final Point endPoint) {
-        mSvgBuilder
+        mSvgPathsBuilder
                 .append("C")
                 .append(controlPoint1)
                 .append(" ")
@@ -110,13 +122,7 @@ public class SvgBuilder {
     }
 
     private void endPath() {
-        mSvgBuilder
-                .append("\" ")
-                .append("stroke-linejoin=\"round\" ")
-                .append("stroke-linecap=\"round\" ")
-                .append("fill=\"none\" ")
-                .append("stroke=\"#000\" ")
-                .append("/>");
+        mSvgPathsBuilder.append("\"/>");
     }
 
     private boolean isPathStarted() {
