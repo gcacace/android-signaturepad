@@ -61,9 +61,7 @@ public class SvgBuilder {
         }
         return (new StringBuilder())
                 .append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
-                .append("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" ")
-                .append("\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">")
-                .append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" ")
+                .append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.2\" baseProfile=\"tiny\" ")
                 .append("height=\"")
                 .append(height)
                 .append("\" ")
