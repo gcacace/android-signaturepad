@@ -29,6 +29,10 @@ class SvgPoint {
         return stringBuilder.toString();
     }
 
+    public String toRelativeCoordinates(final SvgPoint referencePoint) {
+        return (new SvgPoint(x - referencePoint.x, y - referencePoint.y)).toString();
+    }
+
     @Override
     public String toString() {
         return toAbsoluteCoordinates();
