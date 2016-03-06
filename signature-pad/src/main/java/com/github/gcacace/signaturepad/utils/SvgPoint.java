@@ -5,24 +5,33 @@ package com.github.gcacace.signaturepad.utils;
  */
 class SvgPoint {
 
-    /**
-     * string representation of the point
-     */
-    final String svg;
+    final Integer x, y;
 
     public SvgPoint(TimedPoint point) {
         // one optimisation is to get rid of decimals as they are mostly non-significant in the
         // produced SVG image
-        svg = (new StringBuilder())
-                .append(Math.round(point.x))
-                .append(",")
-                .append(Math.round(point.y))
-                .toString();
+        x = Math.round(point.x);
+        y = Math.round(point.y);
+    }
+
+    public SvgPoint(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public String toAbsoluteCoordinates() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(x);
+        if (y >= 0) {
+            stringBuilder.append(" ");
+        }
+        stringBuilder.append(y);
+        return stringBuilder.toString();
     }
 
     @Override
     public String toString() {
-        return svg;
+        return toAbsoluteCoordinates();
     }
 
     @Override
@@ -31,11 +40,16 @@ class SvgPoint {
         if (o == null || getClass() != o.getClass()) return false;
 
         SvgPoint svgPoint = (SvgPoint) o;
-        return svg.equals(svgPoint.svg);
+
+        if (!x.equals(svgPoint.x)) return false;
+        return y.equals(svgPoint.y);
+
     }
 
     @Override
     public int hashCode() {
-        return svg.hashCode();
+        int result = x.hashCode();
+        result = 31 * result + y.hashCode();
+        return result;
     }
 }
