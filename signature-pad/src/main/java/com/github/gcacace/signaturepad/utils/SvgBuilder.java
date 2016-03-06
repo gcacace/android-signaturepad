@@ -2,62 +2,20 @@ package com.github.gcacace.signaturepad.utils;
 
 public class SvgBuilder {
 
-    /**
-     * Represent a point as it would be in the generated SVG document.
-     */
-    private class Point {
-
-        /**
-         * string representation of the point
-         */
-        final String svg;
-
-        public Point(TimedPoint point) {
-            // one optimisation is to get rid of decimals as they are mostly non-significant in the
-            // produced SVG image
-            svg = (new StringBuilder())
-                    .append(Math.round(point.x))
-                    .append(",")
-                    .append(Math.round(point.y))
-                    .toString();
-        }
-
-        @Override
-        public String toString() {
-            return svg;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            Point point = (Point) o;
-            return svg.equals(point.svg);
-        }
-
-        @Override
-        public int hashCode() {
-            return svg.hashCode();
-        }
-    }
-
     private final StringBuilder mSvgPathsBuilder = new StringBuilder();
-    private Point mCurrentPathLastPoint = null;
-    private Integer mCurrentPathStrokeWidth = null;
+    private SvgPathBuilder mCurrentPathBuilder = null;
 
     public SvgBuilder() {
     }
 
     public void clear() {
         mSvgPathsBuilder.setLength(0);
-        mCurrentPathLastPoint = null;
-        mCurrentPathStrokeWidth = null;
+        mCurrentPathBuilder = null;
     }
 
     public String build(final int width, final int height) {
         if (isPathStarted()) {
-            endPath();
+            appendCurrentPath();
         }
         return (new StringBuilder())
                 .append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n")
@@ -82,51 +40,35 @@ public class SvgBuilder {
 
     public SvgBuilder append(final Bezier curve, final float strokeWidth) {
         final Integer roundedStrokeWidth = Math.round(strokeWidth);
-        final Point curveStartPoint = new Point(curve.startPoint);
-        final Point curveControlPoint1 = new Point(curve.control1);
-        final Point curveControlPoint2 = new Point(curve.control2);
-        final Point curveEndPoint = new Point(curve.endPoint);
+        final SvgPoint curveStartSvgPoint = new SvgPoint(curve.startPoint);
+        final SvgPoint curveControlSvgPoint1 = new SvgPoint(curve.control1);
+        final SvgPoint curveControlSvgPoint2 = new SvgPoint(curve.control2);
+        final SvgPoint curveEndSvgPoint = new SvgPoint(curve.endPoint);
 
-        if (!curveStartPoint.equals(mCurrentPathLastPoint) || !roundedStrokeWidth.equals(mCurrentPathStrokeWidth)) {
-            if (isPathStarted()) {
-                endPath();
-            }
-            startNewPath(curveStartPoint, roundedStrokeWidth);
+        if (!isPathStarted()) {
+            startNewPath(roundedStrokeWidth, curveStartSvgPoint);
         }
 
-        addCubicBezierCurve(curveControlPoint1, curveControlPoint2, curveEndPoint);
+        if (!curveStartSvgPoint.equals(mCurrentPathBuilder.getLastPoint())
+                || !roundedStrokeWidth.equals(mCurrentPathBuilder.getStrokeWidth())) {
+            appendCurrentPath();
+            startNewPath(roundedStrokeWidth, curveStartSvgPoint);
+        }
+
+        mCurrentPathBuilder.append(curveControlSvgPoint1, curveControlSvgPoint2, curveEndSvgPoint);
         return this;
     }
 
-    private void startNewPath(final Point startPoint, final Integer strokeWidth) {
-        mSvgPathsBuilder
-                .append("<path ")
-                .append("stroke-width=\"")
-                .append(strokeWidth)
-                .append("\" ")
-                .append("d=\"M")
-                .append(startPoint);
-        mCurrentPathStrokeWidth = strokeWidth;
-        mCurrentPathLastPoint = startPoint;
+    private void startNewPath(Integer roundedStrokeWidth, SvgPoint curveStartSvgPoint) {
+        mCurrentPathBuilder = new SvgPathBuilder(curveStartSvgPoint, roundedStrokeWidth);
     }
 
-    private void addCubicBezierCurve(final Point controlPoint1, final Point controlPoint2, final Point endPoint) {
-        mSvgPathsBuilder
-                .append("C")
-                .append(controlPoint1)
-                .append(" ")
-                .append(controlPoint2)
-                .append(" ")
-                .append(endPoint);
-        mCurrentPathLastPoint = endPoint;
-    }
-
-    private void endPath() {
-        mSvgPathsBuilder.append("\"/>");
+    private void appendCurrentPath() {
+        mSvgPathsBuilder.append(mCurrentPathBuilder);
     }
 
     private boolean isPathStarted() {
-        return mCurrentPathLastPoint != null;
+        return mCurrentPathBuilder != null;
     }
 
 }
