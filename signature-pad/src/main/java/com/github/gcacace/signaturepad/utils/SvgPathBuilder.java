@@ -9,17 +9,19 @@ package com.github.gcacace.signaturepad.utils;
  */
 public class SvgPathBuilder {
 
-    public static final char SVG_ABSOLUTE_CUBIC_BEZIER_CURVE = 'C';
-    public static final char SVG_MOVE = 'M';
+    public static final Character SVG_ABSOLUTE_CUBIC_BEZIER_CURVE = 'C';
+    public static final Character SVG_MOVE = 'M';
     private final StringBuilder mStringBuilder;
     private final Integer mStrokeWidth;
     private final SvgPoint mStartPoint;
     private SvgPoint mLastPoint;
+    private Character mLastSvgCommand;
 
     public SvgPathBuilder(final SvgPoint startPoint, final Integer strokeWidth) {
         mStrokeWidth = strokeWidth;
         mStartPoint = startPoint;
         mLastPoint = startPoint;
+        mLastSvgCommand = null;
         mStringBuilder = new StringBuilder();
     }
 
@@ -32,8 +34,13 @@ public class SvgPathBuilder {
     }
 
     public SvgPathBuilder append(final SvgPoint controlPoint1, final SvgPoint controlPoint2, final SvgPoint endPoint) {
-        mStringBuilder.append(SVG_ABSOLUTE_CUBIC_BEZIER_CURVE);
+        if (SVG_ABSOLUTE_CUBIC_BEZIER_CURVE.equals(mLastSvgCommand)) {
+            mStringBuilder.append(' ');
+        } else {
+            mStringBuilder.append(SVG_ABSOLUTE_CUBIC_BEZIER_CURVE);
+        }
         mStringBuilder.append(makeAbsoluteCubicBezierCurve(controlPoint1, controlPoint2, endPoint));
+        mLastSvgCommand = SVG_ABSOLUTE_CUBIC_BEZIER_CURVE;
         mLastPoint = endPoint;
         return this;
     }
