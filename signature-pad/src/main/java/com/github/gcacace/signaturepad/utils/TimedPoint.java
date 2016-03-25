@@ -1,14 +1,15 @@
 package com.github.gcacace.signaturepad.utils;
 
 public class TimedPoint {
-    public final float x;
-    public final float y;
-    public final long timestamp;
+    public float x;
+    public float y;
+    public long timestamp;
 
-    public TimedPoint(float x, float y) {
+    public TimedPoint set(float x, float y) {
         this.x = x;
         this.y = y;
         this.timestamp = System.currentTimeMillis();
+        return this;
     }
 
     public float velocityFrom(TimedPoint start) {
