@@ -491,7 +491,7 @@ public class SignaturePad extends View {
     }
 
     private int convertDpToPx(float dp){
-        return Math.round(dp*(getResources().getDisplayMetrics().xdpi/ DisplayMetrics.DENSITY_DEFAULT));
+        return Math.round(getContext().getResources().getDisplayMetrics().density * dp);
     }
 
     public interface OnSignedListener {
