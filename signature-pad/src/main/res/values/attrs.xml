@@ -5,6 +5,6 @@
         <attr name="maxWidth" format="dimension" />
         <attr name="penColor" format="color" />
         <attr name="velocityFilterWeight" format="float" />
-        <attr name="isDoubleClick" format="boolean"/>
+        <attr name="clearOnDoubleClick" format="boolean"/>
     </declare-styleable>
 </resources>

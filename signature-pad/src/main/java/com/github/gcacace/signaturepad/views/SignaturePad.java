@@ -41,7 +41,7 @@ public class SignaturePad extends View {
     private int mMaxWidth;
     private float mVelocityFilterWeight;
     private OnSignedListener mOnSignedListener;
-    private boolean mIsDoubleClick;
+    private boolean mClearOnDoubleClick;
 
     //Click values
     private long firstClick;
@@ -65,7 +65,7 @@ public class SignaturePad extends View {
             mMinWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_minWidth, convertDpToPx(3));
             mMaxWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_maxWidth, convertDpToPx(7));
             mVelocityFilterWeight = a.getFloat(R.styleable.SignaturePad_velocityFilterWeight, 0.9f);
-            mIsDoubleClick = a.getBoolean(R.styleable.SignaturePad_isDoubleClick, true);
+            mClearOnDoubleClick = a.getBoolean(R.styleable.SignaturePad_clearOnDoubleClick, false);
             mPaint.setColor(a.getColor(R.styleable.SignaturePad_penColor, Color.BLACK));
         } finally {
             a.recycle();
@@ -162,22 +162,7 @@ public class SignaturePad extends View {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
-
-                if (mIsDoubleClick) {
-                    if (firstClick != 0 && System.currentTimeMillis() - firstClick > 200) {
-                        countClick = 0;
-                    }
-                    countClick ++;
-                    if (countClick == 1) {
-                        firstClick = System.currentTimeMillis();
-                    } else if (countClick == 2) {
-                        long lastClick = System.currentTimeMillis();
-                        if (lastClick - firstClick < 200) {
-                            this.clear();
-                            break;
-                        }
-                    }
-                }
+                if (onDoubleClick()) break;
                 mPath.moveTo(eventX, eventY);
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
@@ -208,6 +193,25 @@ public class SignaturePad extends View {
                 (int) (mDirtyRect.bottom + mMaxWidth));
 
         return true;
+    }
+
+    private boolean onDoubleClick() {
+        if (mClearOnDoubleClick) {
+            if (firstClick != 0 && System.currentTimeMillis() - firstClick > 200) {
+                countClick = 0;
+            }
+            countClick ++;
+            if (countClick == 1) {
+                firstClick = System.currentTimeMillis();
+            } else if (countClick == 2) {
+                long lastClick = System.currentTimeMillis();
+                if (lastClick - firstClick < 200) {
+                    this.clear();
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Override
