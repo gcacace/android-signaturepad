@@ -8,7 +8,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -53,7 +52,6 @@ public class SignaturePad extends View {
     private int countClick;
 
     private Paint mPaint = new Paint();
-    private Path mPath = new Path();
     private Bitmap mSignatureBitmap = null;
     private Canvas mSignatureBitmapCanvas = null;
 
@@ -143,7 +141,6 @@ public class SignaturePad extends View {
         mPoints = new ArrayList<>();
         mLastVelocity = 0;
         mLastWidth = (mMinWidth + mMaxWidth) / 2;
-        mPath.reset();
 
         if (mSignatureBitmap != null) {
             mSignatureBitmap = null;
@@ -167,8 +164,11 @@ public class SignaturePad extends View {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
+<<<<<<< HEAD
                 if (onDoubleClick()) break;
                 mPath.moveTo(eventX, eventY);
+=======
+>>>>>>> upstream/master
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(getNewPoint(eventX, eventY));
