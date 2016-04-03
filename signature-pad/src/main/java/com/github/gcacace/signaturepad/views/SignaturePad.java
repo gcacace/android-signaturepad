@@ -8,9 +8,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -45,8 +45,14 @@ public class SignaturePad extends View {
     private int mMaxWidth;
     private float mVelocityFilterWeight;
     private OnSignedListener mOnSignedListener;
+    private boolean mClearOnDoubleClick;
+
+    //Click values
+    private long firstClick;
+    private int countClick;
 
     private Paint mPaint = new Paint();
+    private Path mPath = new Path();
     private Bitmap mSignatureBitmap = null;
     private Canvas mSignatureBitmapCanvas = null;
 
@@ -63,6 +69,7 @@ public class SignaturePad extends View {
             mMinWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_minWidth, convertDpToPx(3));
             mMaxWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_maxWidth, convertDpToPx(7));
             mVelocityFilterWeight = a.getFloat(R.styleable.SignaturePad_velocityFilterWeight, 0.9f);
+            mClearOnDoubleClick = a.getBoolean(R.styleable.SignaturePad_clearOnDoubleClick, false);
             mPaint.setColor(a.getColor(R.styleable.SignaturePad_penColor, Color.BLACK));
         } finally {
             a.recycle();
@@ -135,6 +142,7 @@ public class SignaturePad extends View {
         mPoints = new ArrayList<>();
         mLastVelocity = 0;
         mLastWidth = (mMinWidth + mMaxWidth) / 2;
+        mPath.reset();
 
         if (mSignatureBitmap != null) {
             mSignatureBitmap = null;
@@ -158,6 +166,8 @@ public class SignaturePad extends View {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
+                if (onDoubleClick()) break;
+                mPath.moveTo(eventX, eventY);
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(getNewPoint(eventX, eventY));
@@ -187,6 +197,25 @@ public class SignaturePad extends View {
                 (int) (mDirtyRect.bottom + mMaxWidth));
 
         return true;
+    }
+
+    private boolean onDoubleClick() {
+        if (mClearOnDoubleClick) {
+            if (firstClick != 0 && System.currentTimeMillis() - firstClick > 200) {
+                countClick = 0;
+            }
+            countClick ++;
+            if (countClick == 1) {
+                firstClick = System.currentTimeMillis();
+            } else if (countClick == 2) {
+                long lastClick = System.currentTimeMillis();
+                if (lastClick - firstClick < 200) {
+                    this.clear();
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Override
