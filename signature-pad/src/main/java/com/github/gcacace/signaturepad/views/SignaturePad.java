@@ -10,7 +10,6 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -45,6 +44,11 @@ public class SignaturePad extends View {
     private int mMaxWidth;
     private float mVelocityFilterWeight;
     private OnSignedListener mOnSignedListener;
+    private boolean mClearOnDoubleClick;
+    //Click values
+    private long mFirstClick;
+    private int mCountClick;
+    private static final int DOUBLE_CLICK_DELAY_MS = 200;
 
     private Paint mPaint = new Paint();
     private Bitmap mSignatureBitmap = null;
@@ -64,6 +68,7 @@ public class SignaturePad extends View {
             mMaxWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_maxWidth, convertDpToPx(7));
             mVelocityFilterWeight = a.getFloat(R.styleable.SignaturePad_velocityFilterWeight, 0.9f);
             mPaint.setColor(a.getColor(R.styleable.SignaturePad_penColor, Color.BLACK));
+            mClearOnDoubleClick = a.getBoolean(R.styleable.SignaturePad_clearOnDoubleClick, false);
         } finally {
             a.recycle();
         }
@@ -158,6 +163,7 @@ public class SignaturePad extends View {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
+                if (isDoubleClick()) break;
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(getNewPoint(eventX, eventY));
@@ -331,6 +337,25 @@ public class SignaturePad extends View {
         }
 
       return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
+    }
+
+    private boolean isDoubleClick() {
+        if (mClearOnDoubleClick) {
+            if (mFirstClick != 0 && System.currentTimeMillis() - mFirstClick > DOUBLE_CLICK_DELAY_MS) {
+                mCountClick = 0;
+            }
+            mCountClick++;
+            if (mCountClick == 1) {
+                mFirstClick = System.currentTimeMillis();
+            } else if (mCountClick == 2) {
+                long lastClick = System.currentTimeMillis();
+                if (lastClick - mFirstClick < DOUBLE_CLICK_DELAY_MS) {
+                    this.clear();
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private TimedPoint getNewPoint(float x, float y) {

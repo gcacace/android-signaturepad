@@ -54,6 +54,7 @@ Add this dependency to your `pom.xml`:
      android:layout_width="match_parent"
      android:layout_height="match_parent"
      app:penColor="@android:color/black"
+     app:clearOnDoubleClick="true"
      />
     ```
 2. Configure attributes.
@@ -61,6 +62,7 @@ Add this dependency to your `pom.xml`:
  * `maxWidth` - The maximum width of the stroke (default: 7dp).
  * `penColor` - The color of the stroke (default: Color.BLACK).
  * `velocityFilterWeight` - Weight used to modify new velocity based on the previous velocity (default: 0.9).
+ * `clearOnDoubleClick` - Double click to clear pad (default: false) 
 
 3. Configure signature events listener
 
