@@ -48,6 +48,7 @@ public class SignaturePad extends View {
     //Click values
     private long mFirstClick;
     private int mCountClick;
+    private static final int DOUBLE_CLICK_DELAY_MS = 200;
 
     private Paint mPaint = new Paint();
     private Bitmap mSignatureBitmap = null;
@@ -340,7 +341,7 @@ public class SignaturePad extends View {
 
     private boolean isDoubleClick() {
         if (mClearOnDoubleClick) {
-            if (mFirstClick != 0 && System.currentTimeMillis() - mFirstClick > 200) {
+            if (mFirstClick != 0 && System.currentTimeMillis() - mFirstClick > DOUBLE_CLICK_DELAY_MS) {
                 mCountClick = 0;
             }
             mCountClick++;
@@ -348,7 +349,7 @@ public class SignaturePad extends View {
                 mFirstClick = System.currentTimeMillis();
             } else if (mCountClick == 2) {
                 long lastClick = System.currentTimeMillis();
-                if (lastClick - mFirstClick < 200) {
+                if (lastClick - mFirstClick < DOUBLE_CLICK_DELAY_MS) {
                     this.clear();
                     return true;
                 }
