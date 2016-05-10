@@ -12,12 +12,15 @@ import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
 
 import com.github.gcacace.signaturepad.R;
 import com.github.gcacace.signaturepad.utils.Bezier;
 import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
 import com.github.gcacace.signaturepad.utils.SvgBuilder;
 import com.github.gcacace.signaturepad.utils.TimedPoint;
+import com.github.gcacace.signaturepad.view.ViewCompat;
+import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -225,29 +228,45 @@ public class SignaturePad extends View {
         return whiteBgBitmap;
     }
 
-    public void setSignatureBitmap(Bitmap signature) {
-        clear();
-        ensureSignatureBitmap();
+    public void setSignatureBitmap(final Bitmap signature) {
+        // View was laid out...
+        if (ViewCompat.isLaidOut(this)) {
+            clear();
+            ensureSignatureBitmap();
 
-        RectF tempSrc = new RectF();
-        RectF tempDst = new RectF();
+            RectF tempSrc = new RectF();
+            RectF tempDst = new RectF();
 
-        int dWidth = signature.getWidth();
-        int dHeight = signature.getHeight();
-        int vWidth = getWidth();
-        int vHeight = getHeight();
+            int dWidth = signature.getWidth();
+            int dHeight = signature.getHeight();
+            int vWidth = getWidth();
+            int vHeight = getHeight();
 
-        // Generate the required transform.
-        tempSrc.set(0, 0, dWidth, dHeight);
-        tempDst.set(0, 0, vWidth, vHeight);
+            // Generate the required transform.
+            tempSrc.set(0, 0, dWidth, dHeight);
+            tempDst.set(0, 0, vWidth, vHeight);
 
-        Matrix drawMatrix = new Matrix();
-        drawMatrix.setRectToRect(tempSrc, tempDst, Matrix.ScaleToFit.CENTER);
+            Matrix drawMatrix = new Matrix();
+            drawMatrix.setRectToRect(tempSrc, tempDst, Matrix.ScaleToFit.CENTER);
 
-        Canvas canvas = new Canvas(mSignatureBitmap);
-        canvas.drawBitmap(signature, drawMatrix, null);
-        setIsEmpty(false);
-        invalidate();
+            Canvas canvas = new Canvas(mSignatureBitmap);
+            canvas.drawBitmap(signature, drawMatrix, null);
+            setIsEmpty(false);
+            invalidate();
+        }
+        // View not laid out yet e.g. called from onCreate(), onRestoreInstanceState()...
+        else {
+            getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    // Remove layout listener...
+                    ViewTreeObserverCompat.removeOnGlobalLayoutListener(getViewTreeObserver(), this);
+
+                    // Signature bitmap...
+                    setSignatureBitmap(signature);
+                }
+            });
+        }
     }
 
     public Bitmap getTransparentSignatureBitmap() {
