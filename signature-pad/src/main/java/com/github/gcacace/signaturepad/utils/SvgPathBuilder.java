@@ -3,7 +3,7 @@ package com.github.gcacace.signaturepad.utils;
 
 /**
  * Build a SVG path as a string.
- * <p/>
+ *
  * https://www.w3.org/TR/SVGTiny12/paths.html
  */
 public class SvgPathBuilder {

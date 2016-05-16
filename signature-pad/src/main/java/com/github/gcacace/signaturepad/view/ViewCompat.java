@@ -9,6 +9,9 @@ public class ViewCompat {
      * was last attached to or detached from a window.
      *
      * See http://developer.android.com/reference/android/support/v4/view/ViewCompat.html#isLaidOut%28android.view.View%29
+     *
+     * @param view the view
+     * @return true if this view has been through at least one layout since it was last attached to or detached from a window.
      */
     public static boolean isLaidOut(View view) {
         // Future (API19+)...
@@ -16,8 +19,6 @@ public class ViewCompat {
             return view.isLaidOut();
         }
         // Legacy...
-        else {
-            return view.getWidth() > 0 && view.getHeight() > 0;
-        }
+        return view.getWidth() > 0 && view.getHeight() > 0;
     }
 }

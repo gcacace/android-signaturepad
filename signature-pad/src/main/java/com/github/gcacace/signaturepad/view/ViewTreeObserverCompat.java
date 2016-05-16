@@ -7,8 +7,8 @@ import android.view.ViewTreeObserver;
 public class ViewTreeObserverCompat {
     /**
      * Remove a previously installed global layout callback.
-     * @param observer
-     * @param victim
+     * @param observer the view observer
+     * @param victim the victim
      */
     @SuppressLint("NewApi")
     @SuppressWarnings("deprecation")

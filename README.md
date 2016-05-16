@@ -25,7 +25,7 @@ Open your `build.gradle` and make sure that Maven Central repository is declared
 ```
 Then, include the library as dependency:
 ```gradle
-compile 'com.github.gcacace:signature-pad:1.1.0'
+compile 'com.github.gcacace:signature-pad:1.2.0'
 ```
 
 ### For Maven users
@@ -35,7 +35,7 @@ Add this dependency to your `pom.xml`:
 <dependency>
   <groupId>com.github.gcacace</groupId>
   <artifactId>signature-pad</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
   <type>aar</type>
 </dependency>
 ```
@@ -54,12 +54,11 @@ Add this dependency to your `pom.xml`:
      android:layout_width="match_parent"
      android:layout_height="match_parent"
      app:penColor="@android:color/black"
-     app:clearOnDoubleClick="true"
      />
     ```
 2. Configure attributes.
- * `minWidth` - The minimum width of the stroke (default: 3dp).
- * `maxWidth` - The maximum width of the stroke (default: 7dp).
+ * `penMinWidth` - The minimum width of the stroke (default: 3dp).
+ * `penMaxWidth` - The maximum width of the stroke (default: 7dp).
  * `penColor` - The color of the stroke (default: Color.BLACK).
  * `velocityFilterWeight` - Weight used to modify new velocity based on the previous velocity (default: 0.9).
  * `clearOnDoubleClick` - Double click to clear pad (default: false) 
