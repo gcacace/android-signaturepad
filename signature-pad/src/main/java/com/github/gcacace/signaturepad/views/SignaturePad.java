@@ -9,6 +9,8 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -29,11 +31,13 @@ public class SignaturePad extends View {
     //View state
     private List<TimedPoint> mPoints;
     private boolean mIsEmpty;
+    private Boolean mHasEditState;
     private float mLastTouchX;
     private float mLastTouchY;
     private float mLastVelocity;
     private float mLastWidth;
     private RectF mDirtyRect;
+    private Bitmap mBitmapSavedState;
 
     private final SvgBuilder mSvgBuilder = new SvgBuilder();
 
@@ -93,7 +97,32 @@ public class SignaturePad extends View {
         //Dirty rectangle to update only the changed portion of the view
         mDirtyRect = new RectF();
 
-        clear();
+        clearView();
+
+    }
+
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        Bundle bundle = new Bundle();
+        bundle.putParcelable("superState", super.onSaveInstanceState());
+        if(this.mHasEditState == null || this.mHasEditState){
+            this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+        }
+        bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
+        return bundle;
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        if (state instanceof Bundle)
+        {
+            Bundle bundle = (Bundle) state;
+            this.setSignatureBitmap((Bitmap)bundle.getParcelable("signatureBitmap"));
+            this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
+            state = bundle.getParcelable("superState");
+        }
+        this.mHasEditState = false;
+        super.onRestoreInstanceState(state);
     }
 
     /**
@@ -146,7 +175,7 @@ public class SignaturePad extends View {
         mVelocityFilterWeight = velocityFilterWeight;
     }
 
-    public void clear() {
+    public void clearView() {
         mSvgBuilder.clear();
         mPoints = new ArrayList<>();
         mLastVelocity = 0;
@@ -160,6 +189,11 @@ public class SignaturePad extends View {
         setIsEmpty(true);
 
         invalidate();
+    }
+
+    public void clear() {
+        this.clearView();
+        this.mHasEditState = true;
     }
 
     @Override
@@ -239,7 +273,7 @@ public class SignaturePad extends View {
     public void setSignatureBitmap(final Bitmap signature) {
         // View was laid out...
         if (ViewCompat.isLaidOut(this)) {
-            clear();
+            clearView();
             ensureSignatureBitmap();
 
             RectF tempSrc = new RectF();
@@ -296,9 +330,9 @@ public class SignaturePad extends View {
         int backgroundColor = Color.TRANSPARENT;
 
         int xMin = Integer.MAX_VALUE,
-            xMax = Integer.MIN_VALUE,
-            yMin = Integer.MAX_VALUE,
-            yMax = Integer.MIN_VALUE;
+                xMax = Integer.MIN_VALUE,
+                yMin = Integer.MAX_VALUE,
+                yMax = Integer.MIN_VALUE;
 
         boolean foundPixel = false;
 
@@ -363,7 +397,7 @@ public class SignaturePad extends View {
                 break;
         }
 
-      return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
+        return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
     }
 
     private boolean isDoubleClick() {
@@ -377,7 +411,7 @@ public class SignaturePad extends View {
             } else if (mCountClick == 2) {
                 long lastClick = System.currentTimeMillis();
                 if (lastClick - mFirstClick < DOUBLE_CLICK_DELAY_MS) {
-                    this.clear();
+                    this.clearView();
                     return true;
                 }
             }
@@ -447,13 +481,14 @@ public class SignaturePad extends View {
 
             recyclePoint(c2);
             recyclePoint(c3);
-            
+
         } else if (pointsCount == 1) {
             // To reduce the initial lag make it work with 3 mPoints
             // by duplicating the first point
             TimedPoint firstPoint = mPoints.get(0);
             mPoints.add(getNewPoint(firstPoint.x, firstPoint.y));
         }
+        this.mHasEditState = true;
     }
 
     private void addBezier(Bezier curve, float startWidth, float endWidth) {
