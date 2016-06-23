@@ -8,8 +8,11 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -23,7 +26,9 @@ import com.github.gcacace.signaturepad.view.ViewCompat;
 import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SignaturePad extends View {
     //View state
@@ -45,8 +50,10 @@ public class SignaturePad extends View {
     //Configurable parameters
     private int mMinWidth;
     private int mMaxWidth;
+    private int mEraserStrokeWidth;
     private float mVelocityFilterWeight;
     private OnSignedListener mOnSignedListener;
+    private OnRestoreListener mOnRestoreListener;
     private boolean mClearOnDoubleClick;
 
     //Click values
@@ -57,6 +64,7 @@ public class SignaturePad extends View {
     //Default attribute values
     private final int DEFAULT_ATTR_PEN_MIN_WIDTH_PX = 3;
     private final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 7;
+    private final int DEFAULT_ATTR_ERASER_STROKE_WIDTH_PX = 20;
     private final int DEFAULT_ATTR_PEN_COLOR = Color.BLACK;
     private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.9f;
     private final boolean DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK = false;
@@ -64,6 +72,13 @@ public class SignaturePad extends View {
     private Paint mPaint = new Paint();
     private Bitmap mSignatureBitmap = null;
     private Canvas mSignatureBitmapCanvas = null;
+    private SignatureMode mMode = SignatureMode.DRAW;
+    private PathManager pathManager = new PathManager();
+    private Path mLastPath = null;
+
+    public enum SignatureMode {
+        DRAW, ERASE
+    }
 
     public SignaturePad(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -77,6 +92,7 @@ public class SignaturePad extends View {
         try {
             mMinWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_penMinWidth, convertDpToPx(DEFAULT_ATTR_PEN_MIN_WIDTH_PX));
             mMaxWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_penMaxWidth, convertDpToPx(DEFAULT_ATTR_PEN_MAX_WIDTH_PX));
+            mEraserStrokeWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_eraserStrokeWidth, convertDpToPx(DEFAULT_ATTR_ERASER_STROKE_WIDTH_PX));
             mPaint.setColor(a.getColor(R.styleable.SignaturePad_penColor, DEFAULT_ATTR_PEN_COLOR));
             mVelocityFilterWeight = a.getFloat(R.styleable.SignaturePad_velocityFilterWeight, DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT);
             mClearOnDoubleClick = a.getBoolean(R.styleable.SignaturePad_clearOnDoubleClick, DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK);
@@ -138,6 +154,15 @@ public class SignaturePad extends View {
     }
 
     /**
+     * Set the width of the stroke in erase mode.
+     *
+     * @param strokeWidth the width in dp.
+     */
+    public void setEraserStrokeWidth(int strokeWidth) {
+        this.mEraserStrokeWidth = strokeWidth;
+    }
+
+    /**
      * Set the velocity filter weight.
      *
      * @param velocityFilterWeight the weight.
@@ -146,7 +171,67 @@ public class SignaturePad extends View {
         mVelocityFilterWeight = velocityFilterWeight;
     }
 
+    public SignatureMode getMode() {
+        return mMode;
+    }
+
+    /**
+     * set the signature pad mode
+     *
+     * @param mode Drawing or erasing
+     */
+    public void setMode(SignatureMode mode) {
+        if (mode == null) {
+            return;
+        }
+        mMode = mode;
+    }
+
+    /**
+     * undo the last path
+     */
+    public void undo() {
+        undo(1);
+    }
+
+    /**
+     * undo steps
+     *
+     * @param steps how many steps to be undone
+     */
+    public void undo(int steps) {
+        undoInternal(steps);
+    }
+
+    /**
+     * redo the last path
+     */
+    public void redo() {
+        redo(1);
+    }
+
+    /**
+     * redo steps
+     *
+     * @param steps how many steps to be redo
+     */
+    public void redo(int steps) {
+        redoInternal(steps);
+    }
+
+    /**
+     * remove all history items
+     */
+    public void clearHistories() {
+        pathManager.destroy();
+    }
+
     public void clear() {
+        clearInternal();
+        pathManager.clear();
+    }
+
+    private void clearInternal() {
         mSvgBuilder.clear();
         mPoints = new ArrayList<>();
         mLastVelocity = 0;
@@ -170,26 +255,40 @@ public class SignaturePad extends View {
         float eventX = event.getX();
         float eventY = event.getY();
 
+        if (mLastPath == null) {
+            mLastPath = new Path();
+        }
+
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
-                if (isDoubleClick()) break;
+                if (isDoubleClick()) {
+                    break;
+                }
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
+                mLastPath.begin(mMode, eventX, eventY);
                 addPoint(getNewPoint(eventX, eventY));
-                if(mOnSignedListener != null) mOnSignedListener.onStartSigning();
+                if (mOnSignedListener != null) {
+                    mOnSignedListener.onStartSigning();
+                }
 
             case MotionEvent.ACTION_MOVE:
+                mLastPath.move(eventX, eventY);
                 resetDirtyRect(eventX, eventY);
                 addPoint(getNewPoint(eventX, eventY));
                 break;
 
             case MotionEvent.ACTION_UP:
+                mLastPath.move(eventX, eventY);
                 resetDirtyRect(eventX, eventY);
                 addPoint(getNewPoint(eventX, eventY));
                 getParent().requestDisallowInterceptTouchEvent(true);
                 setIsEmpty(false);
+
+                pathManager.add(mLastPath);
+                mLastPath = null;
                 break;
 
             default:
@@ -208,9 +307,50 @@ public class SignaturePad extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        if (pathManager.pathRedraw()) {
+            restoreSignatures();
+            return;
+        }
+
         if (mSignatureBitmap != null) {
             canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
         }
+
+        if (pathManager.pendingOnDraw()) {
+            restoreSignaturesComplete();
+        }
+    }
+
+    /**
+     * restore signatures according to the history
+     */
+    private void restoreSignatures() {
+        for (int index = pathManager.getHistory().size() - 1; index >= 0; index--) {
+            pathManager.getHistory().get(index).draw();
+        }
+
+        pathManager.pathRedraw(false);
+        pathManager.pendingOnDraw(true);
+        postInvalidate();
+    }
+
+    /**
+     * signatures restore complete
+     */
+    private void restoreSignaturesComplete() {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                pathManager.pendingOnDraw(false);
+                if (mOnRestoreListener != null) {
+                    mOnRestoreListener.onSignatureRestored();
+                }
+            }
+        });
+    }
+
+    public void setOnRestoreListener(OnRestoreListener listener) {
+        this.mOnRestoreListener = listener;
     }
 
     public void setOnSignedListener(OnSignedListener listener) {
@@ -296,9 +436,9 @@ public class SignaturePad extends View {
         int backgroundColor = Color.TRANSPARENT;
 
         int xMin = Integer.MAX_VALUE,
-            xMax = Integer.MIN_VALUE,
-            yMin = Integer.MAX_VALUE,
-            yMax = Integer.MIN_VALUE;
+                xMax = Integer.MIN_VALUE,
+                yMin = Integer.MAX_VALUE,
+                yMax = Integer.MIN_VALUE;
 
         boolean foundPixel = false;
 
@@ -363,7 +503,7 @@ public class SignaturePad extends View {
                 break;
         }
 
-      return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
+        return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
     }
 
     private boolean isDoubleClick() {
@@ -393,7 +533,7 @@ public class SignaturePad extends View {
             timedPoint = new TimedPoint();
         } else {
             // Get point from cache
-            timedPoint = mPointsCache.remove(mCacheSize-1);
+            timedPoint = mPointsCache.remove(mCacheSize - 1);
         }
 
         return timedPoint.set(x, y);
@@ -447,7 +587,7 @@ public class SignaturePad extends View {
 
             recyclePoint(c2);
             recyclePoint(c3);
-            
+
         } else if (pointsCount == 1) {
             // To reduce the initial lag make it work with 3 mPoints
             // by duplicating the first point
@@ -482,8 +622,10 @@ public class SignaturePad extends View {
             y += 3 * u * tt * curve.control2.y;
             y += ttt * curve.endPoint.y;
 
-            // Set the incremental stroke width and draw.
-            mPaint.setStrokeWidth(startWidth + ttt * widthDelta);
+            // Set the stroke width and set/clear the xfermode object
+            mPaint.setStrokeWidth(mMode.equals(SignatureMode.ERASE) ? mEraserStrokeWidth : startWidth + ttt * widthDelta);
+            mPaint.setXfermode(mMode.equals(SignatureMode.DRAW) ? null : new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+
             mSignatureBitmapCanvas.drawPoint(x, y, mPaint);
             expandDirtyRect(x, y);
         }
@@ -576,13 +718,283 @@ public class SignaturePad extends View {
         }
     }
 
-    private int convertDpToPx(float dp){
+    private int convertDpToPx(float dp) {
         return Math.round(getContext().getResources().getDisplayMetrics().density * dp);
     }
 
     public interface OnSignedListener {
         void onStartSigning();
+
         void onSigned();
+
         void onClear();
+    }
+
+    public interface OnRestoreListener {
+
+        void onRestoreFromHistory();
+
+        void onSignatureRestored();
+    }
+
+    private void undoInternal(final int steps) {
+        if (!pathManager.canUndo()) {
+            Log.w("Signature Pad", "No items in the undo list!");
+            return;
+        }
+
+        if (mOnRestoreListener != null) {
+            mOnRestoreListener.onRestoreFromHistory();
+        }
+
+        pathManager.undo(steps);
+        pathManager.pathRedraw(true);
+
+        postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // trigger redraw
+                clearInternal();
+            }
+        }, 500);
+    }
+
+    private void redoInternal(final int steps) {
+        if (!pathManager.canRedo()) {
+            Log.w("Signature Pad", "No items in the redo list!");
+            return;
+        }
+
+        if (mOnRestoreListener != null) {
+            mOnRestoreListener.onRestoreFromHistory();
+        }
+
+        pathManager.redo(steps);
+        pathManager.pathRedraw(true);
+
+        postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // trigger redraw
+                clearInternal();
+            }
+        }, 500);
+    }
+
+    /**
+     * trail of touch path
+     */
+    private class Path {
+        SignatureMode mode;
+        float touchPointX, touchPointY;
+        LinkedList<Trail> points = new LinkedList<>();
+
+        protected void begin(SignatureMode mode, float eventX, float eventY) {
+            this.mode = mode;
+            this.touchPointX = eventX;
+            this.touchPointY = eventY;
+        }
+
+        protected void move(float eventX, float eventY) {
+            points.push(new Trail(eventX, eventY));
+        }
+
+        public void draw() {
+            if (!points.isEmpty()) {
+                post(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        final SignatureMode originalMode = mMode;
+                        setMode(mode);
+
+                        TimedPoint timedPoint;
+                        getParent().requestDisallowInterceptTouchEvent(true);
+                        mPoints.clear();
+                        Trail head = points.getLast();
+                        mLastTouchX = head.eventX;
+                        mLastTouchY = head.eventY;
+                        timedPoint = getNewPoint(head.eventX, head.eventY);
+                        timedPoint.timestamp = head.timestamp;
+                        addPoint(timedPoint);
+                        for (int index = points.size() - 1; index >= 0; index--) {
+                            Trail trail = points.get(index);
+                            timedPoint = getNewPoint(trail.eventX, trail.eventY);
+                            timedPoint.timestamp = trail.timestamp;
+                            resetDirtyRect(trail.eventX, trail.eventY);
+                            addPoint(timedPoint);
+                        }
+                        getParent().requestDisallowInterceptTouchEvent(true);
+                        setIsEmpty(false);
+                        setMode(originalMode);
+                    }
+                });
+            }
+        }
+    }
+
+    private class Trail {
+        float eventX, eventY;
+        long timestamp;
+
+        public Trail(float eventX, float eventY) {
+            this.eventX = eventX;
+            this.eventY = eventY;
+            timestamp = System.currentTimeMillis();
+        }
+    }
+
+    /**
+     * Manage the trails
+     */
+    private class PathManager {
+
+        /**
+         * store the history items
+         */
+        private LinkedList<Path> history = new LinkedList<>();
+        /**
+         * track the items we removed from history
+         */
+        private LinkedList<Path> retained = new LinkedList<>();
+        /**
+         * redraw flag
+         */
+        private AtomicBoolean pathRedraw = new AtomicBoolean(false);
+        /**
+         * Wait View onDraw to finish
+         */
+        private AtomicBoolean pendingOnDraw = new AtomicBoolean(false);
+
+        /**
+         * clear the histories
+         *
+         * @return actual steps removed
+         */
+        public int clear() {
+            return undo(history.size());
+        }
+
+        /**
+         * destroy the histories
+         */
+        public void destroy() {
+            history.clear();
+            retained.clear();
+        }
+
+        /**
+         * @return the first element in the history
+         */
+        public Path getLast() {
+            if (history.isEmpty()) {
+                return null;
+            }
+            return history.getFirst();
+        }
+
+        /**
+         * add Path at the beginning of the history
+         *
+         * @param item an history item
+         */
+        public void add(Path item) {
+            if (item != null) {
+                Path path = new Path();
+                path.points = new LinkedList<>(item.points);
+                path.touchPointX = item.touchPointX;
+                path.touchPointY = item.touchPointY;
+                path.mode = item.mode;
+                history.push(path);
+            }
+        }
+
+        /**
+         * removes the first Path from history and add it to the retained list so we can reuse it
+         */
+        public void undo() {
+            Path popped = history.pop();
+            retained.push(popped);
+        }
+
+        /**
+         * remove history by steps
+         *
+         * @param steps the count of history items to remove
+         * @return actual steps proceed
+         */
+        public int undo(int steps) {
+            int stepsToUndo = Math.min(steps, history.size());
+            if (stepsToUndo > 0) {
+                for (int i = 0; i < stepsToUndo; i++) {
+                    undo();
+                }
+            }
+            return stepsToUndo;
+        }
+
+        /**
+         * reuse the last removed history item
+         */
+        public void redo() {
+            if (!retained.isEmpty()) {
+                Path reused = retained.pop();
+                history.push(reused);
+            }
+        }
+
+        /**
+         * reuse history items by steps
+         *
+         * @param steps the count of steps to be restore
+         * @return actual steps proceed
+         */
+        public int redo(int steps) {
+            int stepsToRedo = Math.min(steps, retained.size());
+            if (stepsToRedo >= 1) {
+                for (int i = 0; i < stepsToRedo; i++) {
+                    redo();
+                }
+            }
+            return stepsToRedo;
+        }
+
+        public boolean canUndo() {
+            return !history.isEmpty();
+        }
+
+        public boolean canRedo() {
+            return !retained.isEmpty();
+        }
+
+        /**
+         * @return the path we can use to rebuild signatures
+         */
+        public LinkedList<Path> getHistory() {
+            return history;
+        }
+
+        /**
+         * @return the path we can redo
+         */
+        public LinkedList<Path> getRetained() {
+            return retained;
+        }
+
+        public boolean pathRedraw() {
+            return pathRedraw.get();
+        }
+
+        public void pathRedraw(boolean redraw) {
+            this.pathRedraw.set(redraw);
+        }
+
+        public boolean pendingOnDraw() {
+            return pendingOnDraw.get();
+        }
+
+        public void pendingOnDraw(boolean pendingOnDraw) {
+            this.pendingOnDraw.set(pendingOnDraw);
+        }
     }
 }

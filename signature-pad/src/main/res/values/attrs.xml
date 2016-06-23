@@ -3,6 +3,7 @@
     <declare-styleable name="SignaturePad">
         <attr name="penMinWidth" format="dimension" />
         <attr name="penMaxWidth" format="dimension" />
+        <attr name="eraserStrokeWidth" format="dimension" />
         <attr name="penColor" format="color" />
         <attr name="velocityFilterWeight" format="float" />
         <attr name="clearOnDoubleClick" format="boolean"/>

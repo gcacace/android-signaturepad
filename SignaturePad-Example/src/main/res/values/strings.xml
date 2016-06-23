@@ -2,8 +2,15 @@
 <resources>
 
     <string name="app_name">SignaturePad</string>
+    <string name="app_name_features">SignaturePad Features</string>
     <string name="agreement">I agree the terms and conditions.</string>
     <string name="clear_pad">Clear Pad</string>
     <string name="save_signature">Save Signature</string>
+    <string name="action_draw">Draw</string>
+    <string name="action_erase">Erase</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_redo">Redo</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_save">Save</string>
 
 </resources>
