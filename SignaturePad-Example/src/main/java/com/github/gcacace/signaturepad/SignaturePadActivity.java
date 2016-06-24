@@ -1,6 +1,5 @@
 package com.github.gcacace.signaturepad;
 
-import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
@@ -13,7 +12,6 @@ import it.gcacace.signaturepad.R;
 public class SignaturePadActivity extends AppCompatActivity {
 
     private SignaturePad mSignaturePad;
-    private ProgressDialog restoreSpinner = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,25 +19,6 @@ public class SignaturePadActivity extends AppCompatActivity {
         setContentView(R.layout.activity_signature_pad);
 
         mSignaturePad = (SignaturePad) findViewById(R.id.signature_pad);
-        mSignaturePad.setOnRestoreListener(new SignaturePad.OnRestoreListener() {
-            @Override
-            public void onRestoreFromHistory() {
-                restoreSpinner = new ProgressDialog(SignaturePadActivity.this);
-                restoreSpinner.setCanceledOnTouchOutside(false);
-                restoreSpinner.setCancelable(true);
-                restoreSpinner.setIndeterminate(true);
-                restoreSpinner.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-                restoreSpinner.setMessage("Path calculating……");
-                restoreSpinner.show();
-            }
-
-            @Override
-            public void onSignatureRestored() {
-                restoreSpinner.dismiss();
-                restoreSpinner = null;
-            }
-        });
-
     }
 
     @Override

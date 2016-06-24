@@ -28,7 +28,6 @@ import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SignaturePad extends View {
     //View state
@@ -53,7 +52,6 @@ public class SignaturePad extends View {
     private int mEraserStrokeWidth;
     private float mVelocityFilterWeight;
     private OnSignedListener mOnSignedListener;
-    private OnRestoreListener mOnRestoreListener;
     private boolean mClearOnDoubleClick;
 
     //Click values
@@ -74,6 +72,7 @@ public class SignaturePad extends View {
     private Canvas mSignatureBitmapCanvas = null;
     private SignatureMode mMode = SignatureMode.DRAW;
     private PathManager pathManager = new PathManager();
+    private PathOnDrawDirection mOnDrawDirection = null;
     private Path mLastPath = null;
 
     public enum SignatureMode {
@@ -307,50 +306,9 @@ public class SignaturePad extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (pathManager.pathRedraw()) {
-            restoreSignatures();
-            return;
-        }
-
         if (mSignatureBitmap != null) {
             canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
         }
-
-        if (pathManager.pendingOnDraw()) {
-            restoreSignaturesComplete();
-        }
-    }
-
-    /**
-     * restore signatures according to the history
-     */
-    private void restoreSignatures() {
-        for (int index = pathManager.getHistory().size() - 1; index >= 0; index--) {
-            pathManager.getHistory().get(index).draw();
-        }
-
-        pathManager.pathRedraw(false);
-        pathManager.pendingOnDraw(true);
-        postInvalidate();
-    }
-
-    /**
-     * signatures restore complete
-     */
-    private void restoreSignaturesComplete() {
-        post(new Runnable() {
-            @Override
-            public void run() {
-                pathManager.pendingOnDraw(false);
-                if (mOnRestoreListener != null) {
-                    mOnRestoreListener.onSignatureRestored();
-                }
-            }
-        });
-    }
-
-    public void setOnRestoreListener(OnRestoreListener listener) {
-        this.mOnRestoreListener = listener;
     }
 
     public void setOnSignedListener(OnSignedListener listener) {
@@ -623,8 +581,13 @@ public class SignaturePad extends View {
             y += ttt * curve.endPoint.y;
 
             // Set the stroke width and set/clear the xfermode object
-            mPaint.setStrokeWidth(mMode.equals(SignatureMode.ERASE) ? mEraserStrokeWidth : startWidth + ttt * widthDelta);
-            mPaint.setXfermode(mMode.equals(SignatureMode.DRAW) ? null : new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+            if (mOnDrawDirection != null) {
+                mPaint.setStrokeWidth(mOnDrawDirection.equals(PathOnDrawDirection.BACKWARD) ? (startWidth + ttt * widthDelta + 1.725f) : startWidth + ttt * widthDelta);
+                mPaint.setXfermode(mOnDrawDirection.equals(PathOnDrawDirection.BACKWARD) ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
+            } else {
+                mPaint.setStrokeWidth(mMode.equals(SignatureMode.ERASE) ? mEraserStrokeWidth : startWidth + ttt * widthDelta);
+                mPaint.setXfermode(mMode.equals(SignatureMode.DRAW) ? null : new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+            }
 
             mSignatureBitmapCanvas.drawPoint(x, y, mPaint);
             expandDirtyRect(x, y);
@@ -730,33 +693,19 @@ public class SignaturePad extends View {
         void onClear();
     }
 
-    public interface OnRestoreListener {
-
-        void onRestoreFromHistory();
-
-        void onSignatureRestored();
-    }
-
     private void undoInternal(final int steps) {
         if (!pathManager.canUndo()) {
             Log.w("Signature Pad", "No items in the undo list!");
             return;
         }
 
-        if (mOnRestoreListener != null) {
-            mOnRestoreListener.onRestoreFromHistory();
-        }
-
         pathManager.undo(steps);
-        pathManager.pathRedraw(true);
+        mOnDrawDirection = PathOnDrawDirection.BACKWARD;
+        pathManager.getRetained().getFirst().draw();
+        mOnDrawDirection = null;
 
-        postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                // trigger redraw
-                clearInternal();
-            }
-        }, 500);
+        postInvalidate();
+
     }
 
     private void redoInternal(final int steps) {
@@ -765,20 +714,13 @@ public class SignaturePad extends View {
             return;
         }
 
-        if (mOnRestoreListener != null) {
-            mOnRestoreListener.onRestoreFromHistory();
-        }
 
         pathManager.redo(steps);
-        pathManager.pathRedraw(true);
+        mOnDrawDirection = PathOnDrawDirection.FORWARD;
+        pathManager.getHistory().getFirst().draw();
+        mOnDrawDirection = null;
 
-        postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                // trigger redraw
-                clearInternal();
-            }
-        }, 500);
+        postInvalidate();
     }
 
     /**
@@ -801,34 +743,29 @@ public class SignaturePad extends View {
 
         public void draw() {
             if (!points.isEmpty()) {
-                post(new Runnable() {
-                    @Override
-                    public void run() {
 
-                        final SignatureMode originalMode = mMode;
-                        setMode(mode);
+                final SignatureMode originalMode = mMode;
+                setMode(mode);
 
-                        TimedPoint timedPoint;
-                        getParent().requestDisallowInterceptTouchEvent(true);
-                        mPoints.clear();
-                        Trail head = points.getLast();
-                        mLastTouchX = head.eventX;
-                        mLastTouchY = head.eventY;
-                        timedPoint = getNewPoint(head.eventX, head.eventY);
-                        timedPoint.timestamp = head.timestamp;
-                        addPoint(timedPoint);
-                        for (int index = points.size() - 1; index >= 0; index--) {
-                            Trail trail = points.get(index);
-                            timedPoint = getNewPoint(trail.eventX, trail.eventY);
-                            timedPoint.timestamp = trail.timestamp;
-                            resetDirtyRect(trail.eventX, trail.eventY);
-                            addPoint(timedPoint);
-                        }
-                        getParent().requestDisallowInterceptTouchEvent(true);
-                        setIsEmpty(false);
-                        setMode(originalMode);
-                    }
-                });
+                TimedPoint timedPoint;
+                getParent().requestDisallowInterceptTouchEvent(true);
+                mPoints.clear();
+                Trail head = points.getLast();
+                mLastTouchX = head.eventX;
+                mLastTouchY = head.eventY;
+                timedPoint = getNewPoint(head.eventX, head.eventY);
+                timedPoint.timestamp = head.timestamp;
+                addPoint(timedPoint);
+                for (int index = points.size() - 1; index >= 0; index--) {
+                    Trail trail = points.get(index);
+                    timedPoint = getNewPoint(trail.eventX, trail.eventY);
+                    timedPoint.timestamp = trail.timestamp;
+                    resetDirtyRect(trail.eventX, trail.eventY);
+                    addPoint(timedPoint);
+                }
+                getParent().requestDisallowInterceptTouchEvent(true);
+                setIsEmpty(false);
+                setMode(originalMode);
             }
         }
     }
@@ -841,6 +778,26 @@ public class SignaturePad extends View {
             this.eventX = eventX;
             this.eventY = eventY;
             timestamp = System.currentTimeMillis();
+        }
+    }
+
+    private enum PathOnDrawDirection {
+        BACKWARD(1), FORWARD(2);
+        private int direction;
+
+        PathOnDrawDirection(int direction) {
+            this.direction = direction;
+        }
+
+        public int getDirection() {
+            return direction;
+        }
+
+        public static PathOnDrawDirection fromDirection(int val) {
+            if (val == 1) {
+                return BACKWARD;
+            }
+            return FORWARD;
         }
     }
 
@@ -857,14 +814,6 @@ public class SignaturePad extends View {
          * track the items we removed from history
          */
         private LinkedList<Path> retained = new LinkedList<>();
-        /**
-         * redraw flag
-         */
-        private AtomicBoolean pathRedraw = new AtomicBoolean(false);
-        /**
-         * Wait View onDraw to finish
-         */
-        private AtomicBoolean pendingOnDraw = new AtomicBoolean(false);
 
         /**
          * clear the histories
@@ -979,22 +928,6 @@ public class SignaturePad extends View {
          */
         public LinkedList<Path> getRetained() {
             return retained;
-        }
-
-        public boolean pathRedraw() {
-            return pathRedraw.get();
-        }
-
-        public void pathRedraw(boolean redraw) {
-            this.pathRedraw.set(redraw);
-        }
-
-        public boolean pendingOnDraw() {
-            return pendingOnDraw.get();
-        }
-
-        public void pendingOnDraw(boolean pendingOnDraw) {
-            this.pendingOnDraw.set(pendingOnDraw);
         }
     }
 }
