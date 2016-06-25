@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     tools:context="com.github.gcacace.signaturepad.SignaturePadActivity">
 
@@ -15,7 +16,8 @@
         <com.github.gcacace.signaturepad.views.SignaturePad
             android:id="@+id/signature_pad"
             android:layout_width="fill_parent"
-            android:layout_height="fill_parent" />
+            android:layout_height="fill_parent"
+            app:clearOnDoubleClick="true"/>
     </RelativeLayout>
 
 </LinearLayout>

@@ -6,6 +6,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import com.github.gcacace.signaturepad.views.SignaturePad;
+import com.github.gcacace.signaturepad.views.SketchBoard;
 
 import it.gcacace.signaturepad.R;
 
@@ -17,14 +18,13 @@ public class SignaturePadActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_signature_pad);
-
         mSignaturePad = (SignaturePad) findViewById(R.id.signature_pad);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        SignaturePad.SignatureMode mode = mSignaturePad.getMode();
-        int menuRes = mode.equals(SignaturePad.SignatureMode.DRAW) ?
+        SketchBoard.Mode mode = mSignaturePad.getMode();
+        int menuRes = mode.equals(SketchBoard.Mode.DRAW) ?
                 R.menu.signature_pad_drawing : R.menu.signature_pad_erasing;
         getMenuInflater().inflate(menuRes, menu);
         return super.onCreateOptionsMenu(menu);
@@ -35,11 +35,11 @@ public class SignaturePadActivity extends AppCompatActivity {
         int id = item.getItemId();
         switch (id) {
             case R.id.action_draw:
-                mSignaturePad.setMode(SignaturePad.SignatureMode.DRAW);
+                mSignaturePad.setMode(SketchBoard.Mode.DRAW);
                 invalidateOptionsMenu();
                 break;
             case R.id.action_erase:
-                mSignaturePad.setMode(SignaturePad.SignatureMode.ERASE);
+                mSignaturePad.setMode(SketchBoard.Mode.ERASE);
                 invalidateOptionsMenu();
                 break;
             case R.id.action_undo:
