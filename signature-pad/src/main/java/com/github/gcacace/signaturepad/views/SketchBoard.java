@@ -493,7 +493,6 @@ public class SketchBoard {
             }
             xChanged = node.eventX != lastNode.eventX;
             yChanged = node.eventY != lastNode.eventY;
-            lastNode = node;
         }
 
         return xChanged || yChanged;
@@ -945,21 +944,9 @@ public class SketchBoard {
                             addPoint(timedPoint);
                         }
                         mPoints.clear();
-                        drawerObject.data.clear();
                     }
                 }
             }
-            return null;
-        }
-    }
-
-    /**
-     * TODO: implement svg builder
-     */
-    public class SVGBuilder extends TrailsWorker<DrawerObject, Void> {
-
-        @Override
-        protected Void doInBackground(DrawerObject... params) {
             return null;
         }
     }
