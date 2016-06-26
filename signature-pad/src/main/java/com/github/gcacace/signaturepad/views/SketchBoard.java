@@ -68,10 +68,6 @@ public class SketchBoard {
      * state: REDO(2),UNDO(1),AVAILABLE(0)
      */
     private final AtomicInteger drawState = new AtomicInteger(0);
-    /**
-     * use to identify double click between two touches
-     */
-    private final AtomicInteger lastTouchCount = new AtomicInteger(0);
 
     private SketchBoardActionListener actionListener = null;
 
@@ -451,7 +447,6 @@ public class SketchBoard {
     public void end(MotionEvent event) {
         // detect double click
         if (mLastBeginTimestamp != 0 && System.currentTimeMillis() - mLastBeginTimestamp < 200) {
-            lastTouchCount.set(0);
             trails = null;
 
             if (actionListener != null) {
@@ -498,6 +493,7 @@ public class SketchBoard {
             }
             xChanged = node.eventX != lastNode.eventX;
             yChanged = node.eventY != lastNode.eventY;
+            lastNode = node;
         }
 
         return xChanged || yChanged;
@@ -949,6 +945,7 @@ public class SketchBoard {
                             addPoint(timedPoint);
                         }
                         mPoints.clear();
+                        drawerObject.data.clear();
                     }
                 }
             }
