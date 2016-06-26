@@ -29,21 +29,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 16/6/24
  */
 public class SketchBoard {
-    // SVG builder
-    private final SvgBuilder mSvgBuilder = new SvgBuilder();
-    /**
-     * state: REDO(2),UNDO(1),AVAILABLE(0)
-     */
-    private final AtomicInteger drawState = new AtomicInteger(0);
-    //Configurable parameters
-    protected int mMinWidth;
-    protected int mMaxWidth;
-    protected int mPenColor;
-    protected int mEraserStrokeWidth;
-    protected float mVelocityFilterWeight;
-    protected Mode mMode = Mode.DRAW;
     // View attached
     private View view;
+    // SVG builder
+    private final SvgBuilder mSvgBuilder = new SvgBuilder();
     // View state
     private List<TimedPoint> mPoints;
     private float mLastTouchX;
@@ -52,10 +41,20 @@ public class SketchBoard {
     private float mLastWidth;
     private long mLastBeginTimestamp;
     private RectF mDirtyRect;
+
+    //Configurable parameters
+    protected int mMinWidth;
+    protected int mMaxWidth;
+    protected int mPenColor;
+    protected int mEraserStrokeWidth;
+    protected float mVelocityFilterWeight;
+    protected Mode mMode = Mode.DRAW;
+
     // Cache
     private List<TimedPoint> mPointsCache = new ArrayList<>();
     private ControlTimedPoints mControlTimedPointsCached = new ControlTimedPoints();
     private Bezier mBezierCached = new Bezier();
+
     private Paint mPaint = new Paint();
     private Bitmap mSignatureBitmap = null;
     private Canvas mSignatureBitmapCanvas = null;
@@ -65,7 +64,23 @@ public class SketchBoard {
     private SketchesManager sketchesManager = new SketchesManager();
     // the trails we use to track the movement
     private Trails trails;
+    /**
+     * state: REDO(2),UNDO(1),AVAILABLE(0)
+     */
+    private final AtomicInteger drawState = new AtomicInteger(0);
+
     private SketchBoardActionListener actionListener = null;
+
+    public interface SketchBoardActionListener {
+        void onDoubleClicked();
+    }
+
+    /**
+     * the sketch board modes
+     */
+    public enum Mode {
+        DRAW, ERASE
+    }
 
     /**
      * constructor
@@ -577,35 +592,20 @@ public class SketchBoard {
     }
 
     /**
-     * the sketch board modes
-     */
-    public enum Mode {
-        DRAW, ERASE
-    }
-
-    public interface SketchBoardActionListener {
-        void onDoubleClicked();
-    }
-
-    interface Callback<T> {
-        void onResult(T data);
-    }
-
-    /**
      * the point when touching the screen
      */
     public class TrailNode {
         private float eventX, eventY;
         private long timestamp;
 
+        public TrailNode cloneTrailNode() {
+            return new TrailNode(eventX, eventY, timestamp);
+        }
+
         public TrailNode(float eventX, float eventY, long timestamp) {
             this.eventX = eventX;
             this.eventY = eventY;
             this.timestamp = timestamp;
-        }
-
-        public TrailNode cloneTrailNode() {
-            return new TrailNode(eventX, eventY, timestamp);
         }
 
         public float getEventX() {
@@ -629,6 +629,16 @@ public class SketchBoard {
         private int screenWidth, screenHeight, orientation;
         private Mode mode;
 
+        public Trails cloneTrails() {
+            Trails trails = new Trails(orientation, screenWidth, screenHeight, mode);
+            if (!trailNodes.isEmpty()) {
+                for (int index = trailNodes.size() - 1; index >= 0; index--) {
+                    trails.trailNodes.add(trailNodes.get(index).cloneTrailNode());
+                }
+            }
+            return trails;
+        }
+
         public Trails(int orientation, int screenWidth, int screenHeight, Mode mode) {
             this.orientation = orientation;
             this.screenWidth = screenWidth;
@@ -639,16 +649,6 @@ public class SketchBoard {
         public Trails(LinkedList<TrailNode> trailNodes, int orientation, int screenWidth, int screenHeight, Mode mode) {
             this(orientation, screenWidth, screenHeight, mode);
             this.trailNodes = trailNodes;
-        }
-
-        public Trails cloneTrails() {
-            Trails trails = new Trails(orientation, screenWidth, screenHeight, mode);
-            if (!trailNodes.isEmpty()) {
-                for (int index = trailNodes.size() - 1; index >= 0; index--) {
-                    trails.trailNodes.add(trailNodes.get(index).cloneTrailNode());
-                }
-            }
-            return trails;
         }
 
         public Deque<TrailNode> getTrailNodes() {
@@ -951,5 +951,20 @@ public class SketchBoard {
             }
             return null;
         }
+    }
+
+    /**
+     * TODO: implement svg builder
+     */
+    public class SVGBuilder extends TrailsWorker<DrawerObject, Void> {
+
+        @Override
+        protected Void doInBackground(DrawerObject... params) {
+            return null;
+        }
+    }
+
+    interface Callback<T> {
+        void onResult(T data);
     }
 }
