@@ -29,10 +29,21 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 16/6/24
  */
 public class SketchBoard {
-    // View attached
-    private View view;
     // SVG builder
     private final SvgBuilder mSvgBuilder = new SvgBuilder();
+    /**
+     * state: REDO(2),UNDO(1),AVAILABLE(0)
+     */
+    private final AtomicInteger drawState = new AtomicInteger(0);
+    //Configurable parameters
+    protected int mMinWidth;
+    protected int mMaxWidth;
+    protected int mPenColor;
+    protected int mEraserStrokeWidth;
+    protected float mVelocityFilterWeight;
+    protected Mode mMode = Mode.DRAW;
+    // View attached
+    private View view;
     // View state
     private List<TimedPoint> mPoints;
     private float mLastTouchX;
@@ -41,20 +52,10 @@ public class SketchBoard {
     private float mLastWidth;
     private long mLastBeginTimestamp;
     private RectF mDirtyRect;
-
-    //Configurable parameters
-    protected int mMinWidth;
-    protected int mMaxWidth;
-    protected int mPenColor;
-    protected int mEraserStrokeWidth;
-    protected float mVelocityFilterWeight;
-    protected Mode mMode = Mode.DRAW;
-
     // Cache
-    private List<TimedPoint> mPointsCache = new ArrayList<>();
+    private List<TimedPoint> mPointsCache = new ArrayList<TimedPoint>();
     private ControlTimedPoints mControlTimedPointsCached = new ControlTimedPoints();
     private Bezier mBezierCached = new Bezier();
-
     private Paint mPaint = new Paint();
     private Bitmap mSignatureBitmap = null;
     private Canvas mSignatureBitmapCanvas = null;
@@ -64,23 +65,7 @@ public class SketchBoard {
     private SketchesManager sketchesManager = new SketchesManager();
     // the trails we use to track the movement
     private Trails trails;
-    /**
-     * state: REDO(2),UNDO(1),AVAILABLE(0)
-     */
-    private final AtomicInteger drawState = new AtomicInteger(0);
-
     private SketchBoardActionListener actionListener = null;
-
-    public interface SketchBoardActionListener {
-        void onDoubleClicked();
-    }
-
-    /**
-     * the sketch board modes
-     */
-    public enum Mode {
-        DRAW, ERASE
-    }
 
     /**
      * constructor
@@ -144,7 +129,7 @@ public class SketchBoard {
     public void clear() {
 
         mLastWidth = (mMinWidth + mMaxWidth) / 2;
-        mPoints = new ArrayList<>();
+        mPoints = new ArrayList<TimedPoint>();
         sketchesManager.clear();
         mSvgBuilder.clear();
         mLastVelocity = 0;
@@ -413,7 +398,7 @@ public class SketchBoard {
 
         if (trails == null) {
             trails = new Trails(view.getResources().getConfiguration().orientation,
-                    view.getWidth(), view.getHeight(), mMode);
+                    view.getWidth(), view.getHeight(), mMode, mMaxWidth, mMinWidth, mPenColor);
         }
         trails.addNode(new TrailNode(eventX, eventY, point.timestamp));
     }
@@ -591,20 +576,35 @@ public class SketchBoard {
     }
 
     /**
+     * the sketch board modes
+     */
+    public enum Mode {
+        DRAW, ERASE
+    }
+
+    public interface SketchBoardActionListener {
+        void onDoubleClicked();
+    }
+
+    interface Callback<T> {
+        void onResult(T data);
+    }
+
+    /**
      * the point when touching the screen
      */
     public class TrailNode {
         private float eventX, eventY;
         private long timestamp;
 
-        public TrailNode cloneTrailNode() {
-            return new TrailNode(eventX, eventY, timestamp);
-        }
-
         public TrailNode(float eventX, float eventY, long timestamp) {
             this.eventX = eventX;
             this.eventY = eventY;
             this.timestamp = timestamp;
+        }
+
+        public TrailNode cloneTrailNode() {
+            return new TrailNode(eventX, eventY, timestamp);
         }
 
         public float getEventX() {
@@ -624,30 +624,35 @@ public class SketchBoard {
      * Trails is a set of drawing points and the screen w/h during the drawing
      */
     public class Trails {
-        private LinkedList<TrailNode> trailNodes = new LinkedList<>();
+        private LinkedList<TrailNode> trailNodes = new LinkedList<TrailNode>();
         private int screenWidth, screenHeight, orientation;
         private Mode mode;
+        private int strokeMaxWidth, strokeMinWidth;
+        private int strokeColor;
+
+        public Trails(int orientation, int screenWidth, int screenHeight, Mode mode, int strokeMaxWidth, int strokeMinWidth, int strokeColor) {
+            this.orientation = orientation;
+            this.screenWidth = screenWidth;
+            this.screenHeight = screenHeight;
+            this.strokeMaxWidth = strokeMaxWidth;
+            this.strokeMinWidth = strokeMinWidth;
+            this.strokeColor = strokeColor;
+            this.mode = Mode.valueOf(mode.name());
+        }
+
+        public Trails(LinkedList<TrailNode> trailNodes, int orientation, int screenWidth, int screenHeight, Mode mode, int strokeMaxWidth, int strokeMinWidth, int strokeColor) {
+            this(orientation, screenWidth, screenHeight, mode, strokeMaxWidth, strokeMinWidth, strokeColor);
+            this.trailNodes = trailNodes;
+        }
 
         public Trails cloneTrails() {
-            Trails trails = new Trails(orientation, screenWidth, screenHeight, mode);
+            Trails trails = new Trails(orientation, screenWidth, screenHeight, mode, strokeMaxWidth, strokeMinWidth, strokeColor);
             if (!trailNodes.isEmpty()) {
                 for (int index = trailNodes.size() - 1; index >= 0; index--) {
                     trails.trailNodes.add(trailNodes.get(index).cloneTrailNode());
                 }
             }
             return trails;
-        }
-
-        public Trails(int orientation, int screenWidth, int screenHeight, Mode mode) {
-            this.orientation = orientation;
-            this.screenWidth = screenWidth;
-            this.screenHeight = screenHeight;
-            this.mode = Mode.valueOf(mode.name());
-        }
-
-        public Trails(LinkedList<TrailNode> trailNodes, int orientation, int screenWidth, int screenHeight, Mode mode) {
-            this(orientation, screenWidth, screenHeight, mode);
-            this.trailNodes = trailNodes;
         }
 
         public Deque<TrailNode> getTrailNodes() {
@@ -664,6 +669,18 @@ public class SketchBoard {
 
         public int getScreenHeight() {
             return screenHeight;
+        }
+
+        public int getStrokeMaxWidth() {
+            return strokeMaxWidth;
+        }
+
+        public int getStrokeMinWidth() {
+            return strokeMinWidth;
+        }
+
+        public int getStrokeColor() {
+            return strokeColor;
         }
 
         public void addNode(TrailNode trailNode) {
@@ -695,10 +712,10 @@ public class SketchBoard {
      * use to flag last clear action so we can redo all drawings
      */
     public class ClearedTrails extends Trails {
-        private LinkedList<Trails> referenced = new LinkedList<>();
+        private LinkedList<Trails> referenced = new LinkedList<Trails>();
 
         public ClearedTrails(int orientation, int screenWidth, int screenHeight) {
-            super(orientation, screenWidth, screenHeight, Mode.DRAW);
+            super(orientation, screenWidth, screenHeight, Mode.DRAW, mMaxWidth, mMinWidth, mPenColor);
         }
 
         public void pushRef(Trails refNode) {
@@ -717,11 +734,11 @@ public class SketchBoard {
         /**
          * store the history items
          */
-        private final LinkedList<Trails> history = new LinkedList<>();
+        private final LinkedList<Trails> history = new LinkedList<Trails>();
         /**
          * track the items we removed from history
          */
-        private final LinkedList<Trails> retained = new LinkedList<>();
+        private final LinkedList<Trails> retained = new LinkedList<Trails>();
 
         /**
          * clear the histories
@@ -876,11 +893,17 @@ public class SketchBoard {
                 }
 
                 final Mode originalMode = mMode;
+                final int originalStrokeMaxWidth = mMaxWidth;
+                final int originalStrokeMinWidth = mMinWidth;
+                final int originalStrokeColor = mPenColor;
                 // build the drawings
                 new TrailsDrawer() {
                     @Override
                     protected void onPostExecute(Void aVoid) {
                         mMode = originalMode;
+                        mMaxWidth = originalStrokeMaxWidth;
+                        mMinWidth = originalStrokeMinWidth;
+                        mPenColor = originalStrokeColor;
                         callback.onResult(null);
                     }
                 }.execute(new DrawerObject(trails));
@@ -927,6 +950,10 @@ public class SketchBoard {
                         // mode the trails carried\
                         mMode = t.mode;
 
+                        mMaxWidth = t.strokeMaxWidth;
+                        mMinWidth = t.strokeMinWidth;
+                        mPenColor = t.strokeColor;
+
                         TrailNode head = t.firstNode();
                         mLastTouchX = head.getEventX();
                         mLastTouchY = head.getEventY();
@@ -949,9 +976,5 @@ public class SketchBoard {
             }
             return null;
         }
-    }
-
-    interface Callback<T> {
-        void onResult(T data);
     }
 }
