@@ -4,6 +4,7 @@ apply plugin: 'com.jfrog.bintray'
 
 dependencies {
 
+compile 'com.android.support:support-v4:23.3.0'
 }
 
 Properties properties = new Properties()
@@ -15,7 +16,7 @@ android {
     buildToolsVersion project.ANDROID_BUILD_TOOLS_VERSION
 
     defaultConfig {
-        minSdkVersion 4
+        minSdkVersion 12
         targetSdkVersion Integer.parseInt(project.ANDROID_BUILD_TARGET_SDK_VERSION)
     }
 }
