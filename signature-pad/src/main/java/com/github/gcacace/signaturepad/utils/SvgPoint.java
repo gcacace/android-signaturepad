@@ -22,9 +22,7 @@ class SvgPoint {
     public String toAbsoluteCoordinates() {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(x);
-        if (y >= 0) {
-            stringBuilder.append(" ");
-        }
+        stringBuilder.append(",");
         stringBuilder.append(y);
         return stringBuilder.toString();
     }

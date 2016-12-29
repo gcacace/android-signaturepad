@@ -14,14 +14,13 @@ public class SvgPathBuilder {
     private final Integer mStrokeWidth;
     private final SvgPoint mStartPoint;
     private SvgPoint mLastPoint;
-    private Character mLastSvgCommand;
 
     public SvgPathBuilder(final SvgPoint startPoint, final Integer strokeWidth) {
         mStrokeWidth = strokeWidth;
         mStartPoint = startPoint;
         mLastPoint = startPoint;
-        mLastSvgCommand = null;
         mStringBuilder = new StringBuilder();
+        mStringBuilder.append(SVG_RELATIVE_CUBIC_BEZIER_CURVE);
     }
 
     public final Integer getStrokeWidth() {
@@ -34,7 +33,6 @@ public class SvgPathBuilder {
 
     public SvgPathBuilder append(final SvgPoint controlPoint1, final SvgPoint controlPoint2, final SvgPoint endPoint) {
         mStringBuilder.append(makeRelativeCubicBezierCurve(controlPoint1, controlPoint2, endPoint));
-        mLastSvgCommand = SVG_RELATIVE_CUBIC_BEZIER_CURVE;
         mLastPoint = endPoint;
         return this;
     }
@@ -60,25 +58,12 @@ public class SvgPathBuilder {
         final String sEndPoint = endPoint.toRelativeCoordinates(mLastPoint);
 
         final StringBuilder sb = new StringBuilder();
-        if (!SVG_RELATIVE_CUBIC_BEZIER_CURVE.equals(mLastSvgCommand)) {
-            sb.append(SVG_RELATIVE_CUBIC_BEZIER_CURVE);
-            sb.append(sControlPoint1);
-        } else {
-            if (!sControlPoint1.startsWith("-")) {
-                sb.append(" ");
-            }
-            sb.append(sControlPoint1);
-        }
-
-        if (!sControlPoint2.startsWith("-")) {
-            sb.append(" ");
-        }
+        sb.append(sControlPoint1);
+        sb.append(" ");
         sb.append(sControlPoint2);
-
-        if (!sEndPoint.startsWith("-")) {
-            sb.append(" ");
-        }
+        sb.append(" ");
         sb.append(sEndPoint);
+        sb.append(" ");
 
         // discard zero curve
         final String svg = sb.toString();
