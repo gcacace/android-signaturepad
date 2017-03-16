@@ -620,4 +620,8 @@ public class SignaturePad extends View {
         void onSigned();
         void onClear();
     }
+
+    public List<TimedPoint> getPoints() {
+        return mPoints;
+    }
 }
