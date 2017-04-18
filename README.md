@@ -12,7 +12,7 @@ Android Signature Pad is an Android library for drawing smooth signatures. It us
  * Bitmap and SVG support
  * Data Binding
 
-##Installation
+## Installation
 
 Latest version of the library can be found on Maven Central.
 
@@ -41,7 +41,7 @@ Add this dependency to your `pom.xml`:
 </dependency>
 ```
  
-##Usage
+## Usage
 
 *Please see the `/SignaturePad-Example` app for a more detailed code example of how to use the library.*
 
