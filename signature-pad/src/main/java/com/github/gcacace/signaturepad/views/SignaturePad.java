@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -12,6 +13,7 @@ import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.AttributeSet;
+import android.util.Base64;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -24,6 +26,7 @@ import com.github.gcacace.signaturepad.utils.TimedPoint;
 import com.github.gcacace.signaturepad.view.ViewCompat;
 import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -619,5 +622,32 @@ public class SignaturePad extends View {
         void onStartSigning();
         void onSigned();
         void onClear();
+    }
+
+    public String getSignatureBase64Encoded() {
+        return this.bitmapToBase64(this.getSignatureBitmap());
+    }
+
+    public void setSignatureBase64Encoded(String encodedSignature) {
+        this.setSignatureBitmap(this.base64EncodedStringToBitmap(encodedSignature));
+    }
+
+    public String getTransparentSignatureBase64Encoded() {
+        return this.bitmapToBase64(this.getTransparentSignatureBitmap());
+    }
+
+    public String getTransparentSignatureBase64Encoded(boolean trimBlankSpace) {
+        return this.bitmapToBase64(this.getTransparentSignatureBitmap(trimBlankSpace));
+    }
+
+    private String bitmapToBase64(Bitmap bitmap) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        return Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+    }
+
+    private Bitmap base64EncodedStringToBitmap(String encodedString) {
+        byte[] decodedString = Base64.decode(encodedString, Base64.DEFAULT);
+        return BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
     }
 }
