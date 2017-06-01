@@ -182,7 +182,7 @@ public class SignaturePad extends View {
         mLastWidth = (mMinWidth + mMaxWidth) / 2;
 
         if (mSignatureBitmap != null) {
-            mSignatureBitmap = null;
+            clearBitmap();
             ensureSignatureBitmap();
         }
 
@@ -613,6 +613,21 @@ public class SignaturePad extends View {
 
     private int convertDpToPx(float dp){
         return Math.round(getContext().getResources().getDisplayMetrics().density * dp);
+    }
+
+    private void clearBitmap(){
+        if(mSignatureBitmapCanvas != null){
+            mSignatureBitmapCanvas.setBitmap(null);
+            mSignatureBitmapCanvas = null;
+        }
+
+        if(mSignatureBitmap != null){
+            if(!mSignatureBitmap.isRecycled()) {
+                mSignatureBitmap.recycle();
+            }
+            mSignatureBitmap = null;
+        }
+        System.gc();
     }
 
     public interface OnSignedListener {
