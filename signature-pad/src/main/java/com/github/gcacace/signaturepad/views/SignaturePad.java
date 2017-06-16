@@ -263,7 +263,7 @@ public class SignaturePad extends View {
 
     public Bitmap getSignatureBitmap() {
         Bitmap originalBitmap = getTransparentSignatureBitmap();
-        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.RGB_565 );
         Canvas canvas = new Canvas(whiteBgBitmap);
         canvas.drawColor(Color.WHITE);
         canvas.drawBitmap(originalBitmap, 0, 0, null);
@@ -606,7 +606,7 @@ public class SignaturePad extends View {
     private void ensureSignatureBitmap() {
         if (mSignatureBitmap == null) {
             mSignatureBitmap = Bitmap.createBitmap(getWidth(), getHeight(),
-                    Bitmap.Config.ARGB_8888);
+                    Bitmap.Config.RGB_565 );
             mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
         }
     }
