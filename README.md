@@ -40,7 +40,7 @@ Add this dependency to your `pom.xml`:
   <type>aar</type>
 </dependency>
 ```
- 
+
 ## Usage
 
 *Please see the `/SignaturePad-Example` app for a more detailed code example of how to use the library.*
@@ -62,13 +62,13 @@ Add this dependency to your `pom.xml`:
  * `penMaxWidth` - The maximum width of the stroke (default: 7dp).
  * `penColor` - The color of the stroke (default: Color.BLACK).
  * `velocityFilterWeight` - Weight used to modify new velocity based on the previous velocity (default: 0.9).
- * `clearOnDoubleClick` - Double click to clear pad (default: false) 
+ * `clearOnDoubleClick` - Double click to clear pad (default: false)
 
 3. Configure signature events listener
 
  An `OnSignedListener` can be set on the view:
  ```java
-  
+
  mSignaturePad = (SignaturePad) findViewById(R.id.signature_pad);
  mSignaturePad.setOnSignedListener(new SignaturePad.OnSignedListener() {
 
@@ -81,14 +81,14 @@ Add this dependency to your `pom.xml`:
      public void onSigned() {
          //Event triggered when the pad is signed
      }
- 
+
      @Override
      public void onClear() {
          //Event triggered when the pad is cleared
      }
  });
  ```
- 
+
 4. Get signature data
  * `getSignatureBitmap()` - A signature bitmap with a white background.
  * `getTransparentSignatureBitmap()` - A signature bitmap with a transparent background.

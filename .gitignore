@@ -1,34 +1,25 @@
-#Android generated
-bin
-gen
-gen*
+# Gradle files
+.gradle/
+build/
 
-#Eclipse
-.project
-.classpath
-.settings
+# Local configuration file (sdk path, etc)
+local.properties
 
-#IntelliJ IDEA
-.idea
+# Android Studio generated folders
+.navigation/
+captures/
+.externalNativeBuild
+
+# IntelliJ project files
 *.iml
-*.ipr
-*.iws
-out
+.idea/
 
-#Maven
-target
+# Misc
+.DS_Store
+
+# Keystore files
+*.jks
+
+# Release/publishing credentials
 bintray.properties
 release.properties
-pom.xml.*
-
-#Ant
-build.xml
-local.properties
-proguard.cfg
-
-#Gradle
-.gradle
-build
-
-#OSX
-.DS_Store
