@@ -208,7 +208,10 @@ public class SignaturePad extends View {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
-                if (isDoubleClick()) break;
+                if (isDoubleClick()) {
+                    setIsEmpty(true);
+                    break;
+                }
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(getNewPoint(eventX, eventY));
