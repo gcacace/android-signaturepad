@@ -209,6 +209,7 @@ public class SignaturePad extends View {
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
                 if (isDoubleClick()) {
+                    this.clearView();
                     setIsEmpty(true);
                     break;
                 }
@@ -414,7 +415,6 @@ public class SignaturePad extends View {
             } else if (mCountClick == 2) {
                 long lastClick = System.currentTimeMillis();
                 if (lastClick - mFirstClick < DOUBLE_CLICK_DELAY_MS) {
-                    this.clearView();
                     return true;
                 }
             }
