@@ -1,5 +1,7 @@
 package com.github.gcacace.signaturepad.utils;
 
+import android.util.Log;
+
 public class TimedPoint {
     public float x;
     public float y;
@@ -13,8 +15,14 @@ public class TimedPoint {
     }
 
     public float velocityFrom(TimedPoint start) {
-        float velocity = distanceTo(start) / (this.timestamp - start.timestamp);
-        if (velocity != velocity) return 0f;
+        long diff = this.timestamp - start.timestamp;
+        if(diff <= 0) {
+            diff = 1;
+        }
+        float velocity = distanceTo(start) / diff;
+        if (Float.isInfinite(velocity) || Float.isNaN(velocity)) {
+            velocity = 0;
+        }
         return velocity;
     }
 
