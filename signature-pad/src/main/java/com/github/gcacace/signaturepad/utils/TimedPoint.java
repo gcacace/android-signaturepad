@@ -1,7 +1,5 @@
 package com.github.gcacace.signaturepad.utils;
 
-import android.util.Log;
-
 public class TimedPoint {
     public float x;
     public float y;
