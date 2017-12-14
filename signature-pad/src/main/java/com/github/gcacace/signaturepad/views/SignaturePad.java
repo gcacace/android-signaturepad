@@ -9,9 +9,11 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -101,29 +103,29 @@ public class SignaturePad extends View {
 
     }
 
-    @Override
-    protected Parcelable onSaveInstanceState() {
-        Bundle bundle = new Bundle();
-        bundle.putParcelable("superState", super.onSaveInstanceState());
-        if(this.mHasEditState == null || this.mHasEditState){
-            this.mBitmapSavedState = this.getTransparentSignatureBitmap();
-        }
-        bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
-        return bundle;
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Parcelable state) {
-        if (state instanceof Bundle)
-        {
-            Bundle bundle = (Bundle) state;
-            this.setSignatureBitmap((Bitmap)bundle.getParcelable("signatureBitmap"));
-            this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
-            state = bundle.getParcelable("superState");
-        }
-        this.mHasEditState = false;
-        super.onRestoreInstanceState(state);
-    }
+//    @Override
+//    protected Parcelable onSaveInstanceState() {
+//        Bundle bundle = new Bundle();
+//        bundle.putParcelable("superState", super.onSaveInstanceState());
+//        if(this.mHasEditState == null || this.mHasEditState){
+//            this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+//        }
+//        bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
+//        return bundle;
+//    }
+//
+//    @Override
+//    protected void onRestoreInstanceState(Parcelable state) {
+//        if (state instanceof Bundle)
+//        {
+//            Bundle bundle = (Bundle) state;
+//            this.setSignatureBitmap((Bitmap)bundle.getParcelable("signatureBitmap"));
+//            this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
+//            state = bundle.getParcelable("superState");
+//        }
+//        this.mHasEditState = false;
+//        super.onRestoreInstanceState(state);
+//    }
 
     /**
      * Set the pen color from a given resource.
@@ -183,7 +185,7 @@ public class SignaturePad extends View {
 
         if (mSignatureBitmap != null) {
             clearBitmap();
-            ensureSignatureBitmap();
+            //ensureSignatureBitmap();
         }
 
         setIsEmpty(true);
@@ -261,13 +263,20 @@ public class SignaturePad extends View {
         return mSvgBuilder.build(width, height);
     }
 
-    public Bitmap getSignatureBitmap() {
-        Bitmap originalBitmap = getTransparentSignatureBitmap();
-        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_4444 );
-        Canvas canvas = new Canvas(whiteBgBitmap);
-        canvas.drawColor(Color.WHITE);
-        canvas.drawBitmap(originalBitmap, 0, 0, null);
-        return whiteBgBitmap;
+//    public Bitmap getSignatureBitmap() {
+//        Bitmap originalBitmap = getTransparentSignatureBitmap();
+//        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_4444 );
+//        Canvas canvas = new Canvas(whiteBgBitmap);
+//        canvas.drawColor(Color.WHITE);
+//        canvas.drawBitmap(originalBitmap, 0, 0, null);
+//        return whiteBgBitmap;
+//    }
+
+
+    public void setDrawableSignatureBackground(final Drawable drawable){
+        ensureSignatureBitmap();
+        drawable.draw(mSignatureBitmapCanvas);
+        invalidate();
     }
 
     public void setSignatureBitmap(final Bitmap signature) {
@@ -316,89 +325,89 @@ public class SignaturePad extends View {
         return mSignatureBitmap;
     }
 
-    public Bitmap getTransparentSignatureBitmap(boolean trimBlankSpace) {
-
-        if (!trimBlankSpace) {
-            return getTransparentSignatureBitmap();
-        }
-
-        ensureSignatureBitmap();
-
-        int imgHeight = mSignatureBitmap.getHeight();
-        int imgWidth = mSignatureBitmap.getWidth();
-
-        int backgroundColor = Color.TRANSPARENT;
-
-        int xMin = Integer.MAX_VALUE,
-                xMax = Integer.MIN_VALUE,
-                yMin = Integer.MAX_VALUE,
-                yMax = Integer.MIN_VALUE;
-
-        boolean foundPixel = false;
-
-        // Find xMin
-        for (int x = 0; x < imgWidth; x++) {
-            boolean stop = false;
-            for (int y = 0; y < imgHeight; y++) {
-                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
-                    xMin = x;
-                    stop = true;
-                    foundPixel = true;
-                    break;
-                }
-            }
-            if (stop)
-                break;
-        }
-
-        // Image is empty...
-        if (!foundPixel)
-            return null;
-
-        // Find yMin
-        for (int y = 0; y < imgHeight; y++) {
-            boolean stop = false;
-            for (int x = xMin; x < imgWidth; x++) {
-                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
-                    yMin = y;
-                    stop = true;
-                    break;
-                }
-            }
-            if (stop)
-                break;
-        }
-
-        // Find xMax
-        for (int x = imgWidth - 1; x >= xMin; x--) {
-            boolean stop = false;
-            for (int y = yMin; y < imgHeight; y++) {
-                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
-                    xMax = x;
-                    stop = true;
-                    break;
-                }
-            }
-            if (stop)
-                break;
-        }
-
-        // Find yMax
-        for (int y = imgHeight - 1; y >= yMin; y--) {
-            boolean stop = false;
-            for (int x = xMin; x <= xMax; x++) {
-                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
-                    yMax = y;
-                    stop = true;
-                    break;
-                }
-            }
-            if (stop)
-                break;
-        }
-
-        return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
-    }
+//    public Bitmap getTransparentSignatureBitmap(boolean trimBlankSpace) {
+//
+//        if (!trimBlankSpace) {
+//            return getTransparentSignatureBitmap();
+//        }
+//
+//        ensureSignatureBitmap();
+//
+//        int imgHeight = mSignatureBitmap.getHeight();
+//        int imgWidth = mSignatureBitmap.getWidth();
+//
+//        int backgroundColor = Color.TRANSPARENT;
+//
+//        int xMin = Integer.MAX_VALUE,
+//                xMax = Integer.MIN_VALUE,
+//                yMin = Integer.MAX_VALUE,
+//                yMax = Integer.MIN_VALUE;
+//
+//        boolean foundPixel = false;
+//
+//        // Find xMin
+//        for (int x = 0; x < imgWidth; x++) {
+//            boolean stop = false;
+//            for (int y = 0; y < imgHeight; y++) {
+//                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
+//                    xMin = x;
+//                    stop = true;
+//                    foundPixel = true;
+//                    break;
+//                }
+//            }
+//            if (stop)
+//                break;
+//        }
+//
+//        // Image is empty...
+//        if (!foundPixel)
+//            return null;
+//
+//        // Find yMin
+//        for (int y = 0; y < imgHeight; y++) {
+//            boolean stop = false;
+//            for (int x = xMin; x < imgWidth; x++) {
+//                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
+//                    yMin = y;
+//                    stop = true;
+//                    break;
+//                }
+//            }
+//            if (stop)
+//                break;
+//        }
+//
+//        // Find xMax
+//        for (int x = imgWidth - 1; x >= xMin; x--) {
+//            boolean stop = false;
+//            for (int y = yMin; y < imgHeight; y++) {
+//                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
+//                    xMax = x;
+//                    stop = true;
+//                    break;
+//                }
+//            }
+//            if (stop)
+//                break;
+//        }
+//
+//        // Find yMax
+//        for (int y = imgHeight - 1; y >= yMin; y--) {
+//            boolean stop = false;
+//            for (int x = xMin; x <= xMax; x++) {
+//                if (mSignatureBitmap.getPixel(x, y) != backgroundColor) {
+//                    yMax = y;
+//                    stop = true;
+//                    break;
+//                }
+//            }
+//            if (stop)
+//                break;
+//        }
+//
+//        return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
+//    }
 
     private boolean isDoubleClick() {
         if (mClearOnDoubleClick) {
@@ -605,8 +614,23 @@ public class SignaturePad extends View {
 
     private void ensureSignatureBitmap() {
         if (mSignatureBitmap == null) {
-            mSignatureBitmap = Bitmap.createBitmap(getWidth(), getHeight(),
-                    Bitmap.Config.ARGB_4444 );
+            Runtime runtime = Runtime.getRuntime();
+            int width = getWidth();
+            int height = getHeight();
+
+            //Bitmap.ConfigRGB_565:  R=5, G=6, B=5, no transparency, then a pixel point of 5+6+5=16
+            long requiredMemory = width * height * 16;
+            long memoryAvailable = (runtime.maxMemory() - runtime.totalMemory() + runtime.freeMemory());
+
+            if(requiredMemory > memoryAvailable){
+                runtime.gc();
+                try {
+                    Thread.sleep(100);  //wait for gc to complete
+                } catch (InterruptedException e){
+                    Log.e("SignaturePadError","Failed to sleep", e);
+                }
+            }
+            mSignatureBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
             mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
         }
     }
@@ -615,7 +639,7 @@ public class SignaturePad extends View {
         return Math.round(getContext().getResources().getDisplayMetrics().density * dp);
     }
 
-    private void clearBitmap(){
+    public void clearBitmap(){
         if(mSignatureBitmapCanvas != null){
             mSignatureBitmapCanvas.setBitmap(null);
             mSignatureBitmapCanvas = null;
