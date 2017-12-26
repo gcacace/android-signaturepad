@@ -101,6 +101,10 @@ public class SignaturePad extends View {
 
     }
 
+    public void setClearOnDoubleClick(boolean mClearOnDoubleClick) {
+        this.mClearOnDoubleClick = mClearOnDoubleClick;
+    }
+    
     @Override
     protected Parcelable onSaveInstanceState() {
         Bundle bundle = new Bundle();
