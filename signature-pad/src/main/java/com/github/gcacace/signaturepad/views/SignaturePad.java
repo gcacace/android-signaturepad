@@ -57,6 +57,7 @@ public class SignaturePad extends View {
     private long mFirstClick;
     private int mCountClick;
     private static final int DOUBLE_CLICK_DELAY_MS = 200;
+    private static final float DOUBLE_CLICK_SQUARED_MOVE_DIST = 75;
 
     //Default attribute values
     private final int DEFAULT_ATTR_PEN_MIN_WIDTH_PX = 3;
@@ -212,7 +213,6 @@ public class SignaturePad extends View {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
-                if (isDoubleClick()) break;
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(getNewPoint(eventX, eventY));
@@ -224,6 +224,9 @@ public class SignaturePad extends View {
                 break;
 
             case MotionEvent.ACTION_UP:
+                if (this.isDoubleClick(eventX, eventY)) {
+                    break;
+                }
                 resetDirtyRect(eventX, eventY);
                 addPoint(getNewPoint(eventX, eventY));
                 getParent().requestDisallowInterceptTouchEvent(true);
@@ -242,6 +245,12 @@ public class SignaturePad extends View {
                 (int) (mDirtyRect.bottom + mMaxWidth));
 
         return true;
+    }
+
+    private float calculateSquaredDistance(float startX, float startY, float endX, float endY) {
+        float xDist = endX - startX;
+        float yDist = endY - startY;
+        return xDist * xDist + yDist * yDist;
     }
 
     @Override
@@ -404,7 +413,7 @@ public class SignaturePad extends View {
         return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
     }
 
-    private boolean isDoubleClick() {
+    private boolean isDoubleClick(float currentX, float currentY) {
         if (mClearOnDoubleClick) {
             if (mFirstClick != 0 && System.currentTimeMillis() - mFirstClick > DOUBLE_CLICK_DELAY_MS) {
                 mCountClick = 0;
@@ -414,7 +423,8 @@ public class SignaturePad extends View {
                 mFirstClick = System.currentTimeMillis();
             } else if (mCountClick == 2) {
                 long lastClick = System.currentTimeMillis();
-                if (lastClick - mFirstClick < DOUBLE_CLICK_DELAY_MS) {
+                float dist = this.calculateSquaredDistance(mLastTouchX, mLastTouchY, currentX, currentY);
+                if (lastClick - mFirstClick < DOUBLE_CLICK_DELAY_MS && dist < DOUBLE_CLICK_SQUARED_MOVE_DIST) {
                     this.clearView();
                     return true;
                 }
