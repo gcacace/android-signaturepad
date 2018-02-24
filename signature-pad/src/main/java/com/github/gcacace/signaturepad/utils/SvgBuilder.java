@@ -25,7 +25,7 @@ public class SvgBuilder {
                 .append("\" ")
                 .append("width=\"")
                 .append(width)
-                .append("\">")
+                .append("\" ")
                 .append("viewBox=\"")
                 .append(0)
                 .append(" ")
