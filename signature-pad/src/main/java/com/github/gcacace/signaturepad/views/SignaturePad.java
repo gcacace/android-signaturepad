@@ -106,7 +106,7 @@ public class SignaturePad extends View {
         //Dirty rectangle to update only the changed portion of the view
         mDirtyRect = new RectF();
 
-        this.orientation = context.getResources().getConfiguration().orientation;
+//        this.orientation = context.getResources().getConfiguration().orientation;
 
         clearView();
 
@@ -267,6 +267,7 @@ public class SignaturePad extends View {
     protected void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         this.orientation = newConfig.orientation;
+        invalidate();
     }
 
     public void setOnSignedListener(OnSignedListener listener) {
