@@ -23,5 +23,5 @@ android {
 
 dependencies {
     implementation project(":signature-pad")
-    implementation 'com.android.support:appcompat-v7:26.1.0'
+    implementation 'com.android.support:appcompat-v7:26.0.1'
 }
