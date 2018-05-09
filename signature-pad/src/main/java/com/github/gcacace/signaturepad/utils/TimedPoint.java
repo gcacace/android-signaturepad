@@ -3,7 +3,7 @@ package com.github.gcacace.signaturepad.utils;
 public class TimedPoint {
     public float x;
     public float y;
-    public long timestamp;
+    private long timestamp;
 
     public TimedPoint set(float x, float y) {
         this.x = x;
@@ -24,7 +24,7 @@ public class TimedPoint {
         return velocity;
     }
 
-    public float distanceTo(TimedPoint point) {
-        return (float) Math.sqrt(Math.pow(point.x - this.x, 2) + Math.pow(point.y - this.y, 2));
+    private float distanceTo(TimedPoint point) {
+        return (float) Math.hypot(point.x - this.x, point.y - this.y);
     }
 }

@@ -1,6 +1,7 @@
 package com.github.gcacace.signaturepad.views;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
@@ -27,6 +28,9 @@ import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 import java.util.ArrayList;
 import java.util.List;
 
+import static android.content.res.Configuration.ORIENTATION_PORTRAIT;
+import static android.content.res.Configuration.ORIENTATION_UNDEFINED;
+
 public class SignaturePad extends View {
     //View state
     private List<TimedPoint> mPoints;
@@ -38,6 +42,7 @@ public class SignaturePad extends View {
     private float mLastWidth;
     private RectF mDirtyRect;
     private Bitmap mBitmapSavedState;
+    private int orientation;
 
     private final SvgBuilder mSvgBuilder = new SvgBuilder();
 
@@ -100,6 +105,8 @@ public class SignaturePad extends View {
 
         //Dirty rectangle to update only the changed portion of the view
         mDirtyRect = new RectF();
+
+        this.orientation = context.getResources().getConfiguration().orientation;
 
         clearView();
 
@@ -247,8 +254,19 @@ public class SignaturePad extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         if (mSignatureBitmap != null) {
-            canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
+            if(orientation == ORIENTATION_PORTRAIT ||
+                    orientation == ORIENTATION_UNDEFINED) {
+                canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
+            } else {
+                canvas.drawBitmap(mSignatureBitmap, getMeasuredWidth(), getMeasuredHeight(), mPaint);
+            }
         }
+    }
+
+    @Override
+    protected void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        this.orientation = newConfig.orientation;
     }
 
     public void setOnSignedListener(OnSignedListener listener) {
