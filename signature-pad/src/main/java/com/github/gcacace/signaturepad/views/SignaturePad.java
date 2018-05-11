@@ -28,6 +28,7 @@ import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 import java.util.ArrayList;
 import java.util.List;
 
+import static android.content.res.Configuration.ORIENTATION_LANDSCAPE;
 import static android.content.res.Configuration.ORIENTATION_PORTRAIT;
 import static android.content.res.Configuration.ORIENTATION_UNDEFINED;
 
@@ -254,12 +255,11 @@ public class SignaturePad extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         if (mSignatureBitmap != null) {
-            if(orientation == ORIENTATION_PORTRAIT ||
-                    orientation == ORIENTATION_UNDEFINED) {
-                canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
-            } else {
-                canvas.drawBitmap(mSignatureBitmap, getHeight(), 0, mPaint);
+            if(orientation == ORIENTATION_LANDSCAPE) {
+                canvas.rotate(90);
             }
+
+            canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
         }
     }
 
