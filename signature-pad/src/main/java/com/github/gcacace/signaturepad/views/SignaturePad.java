@@ -258,7 +258,7 @@ public class SignaturePad extends View {
                     orientation == ORIENTATION_UNDEFINED) {
                 canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
             } else {
-                canvas.drawBitmap(mSignatureBitmap, getHeight(), getWidth(), mPaint);
+                canvas.drawBitmap(mSignatureBitmap, getHeight(), 0, mPaint);
             }
         }
     }
