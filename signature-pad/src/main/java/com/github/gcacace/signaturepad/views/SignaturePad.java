@@ -43,7 +43,6 @@ public class SignaturePad extends View {
     private float mLastWidth;
     private RectF mDirtyRect;
     private Bitmap mBitmapSavedState;
-    private int orientation;
 
     private final SvgBuilder mSvgBuilder = new SvgBuilder();
 
@@ -255,19 +254,16 @@ public class SignaturePad extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         if (mSignatureBitmap != null) {
-            if(orientation == ORIENTATION_LANDSCAPE) {
-                canvas.rotate(90);
-            }
-
             canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
         }
     }
 
     @Override
-    protected void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        this.orientation = newConfig.orientation;
-        invalidate();
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        ensureSignatureBitmap();
+        mSignatureBitmap = Bitmap.createScaledBitmap(mSignatureBitmap, w, h, true);
+        mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
     }
 
     public void setOnSignedListener(OnSignedListener listener) {
