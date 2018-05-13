@@ -262,7 +262,8 @@ public class SignaturePad extends View {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         ensureSignatureBitmap();
-        mSignatureBitmap = Bitmap.createScaledBitmap(mSignatureBitmap, w, h, true);
+        float scale = Math.min((float) w / mSignatureBitmap.getWidth(), (float) h / mSignatureBitmap.getHeight());
+        mSignatureBitmap = Bitmap.createScaledBitmap(mSignatureBitmap, (int)(w * scale), (int)(h * scale), true);
         mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
     }
 
