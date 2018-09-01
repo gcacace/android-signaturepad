@@ -60,9 +60,9 @@ public class SignaturePad extends View {
 
     //Default attribute values
     private final int DEFAULT_ATTR_PEN_MIN_WIDTH_PX = 3;
-    private final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 7;
+    private final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 10;
     private final int DEFAULT_ATTR_PEN_COLOR = Color.BLACK;
-    private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.9f;
+    private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.3f;
     private final boolean DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK = false;
 
     private Paint mPaint = new Paint();
@@ -464,7 +464,7 @@ public class SignaturePad extends View {
 
             // The new width is a function of the velocity. Higher velocities
             // correspond to thinner strokes.
-            float newWidth = mMaxWidth * pressure;//strokeWidth(velocity);
+            float newWidth = strokeWidth(velocity, pressure);
 
             // The Bezier's width starts out as last curve's final width, and
             // gradually changes to the stroke width just calculated. The new
@@ -553,8 +553,9 @@ public class SignaturePad extends View {
         return mControlTimedPointsCached.set(getNewPoint(m1X + tx, m1Y + ty), getNewPoint(m2X + tx, m2Y + ty));
     }
 
-    private float strokeWidth(float velocity) {
-        return Math.max(mMaxWidth / (velocity + 1), mMinWidth);
+    private float strokeWidth(float velocity, float pressure) {
+        float velocityWidth =  Math.max(mMaxWidth / (velocity + 1), mMinWidth);
+        return Math.max(velocityWidth*pressure,mMinWidth);
     }
 
     /**
