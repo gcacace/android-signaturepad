@@ -211,17 +211,17 @@ public class SignaturePad extends View {
                 if (isDoubleClick()) break;
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
-                addPoint(getNewPoint(eventX, eventY),event.getPressure());
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
                 if(mOnSignedListener != null) mOnSignedListener.onStartSigning();
 
             case MotionEvent.ACTION_MOVE:
                 resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY),event.getPressure());
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
                 break;
 
             case MotionEvent.ACTION_UP:
                 resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY),event.getPressure());
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
                 getParent().requestDisallowInterceptTouchEvent(true);
                 setIsEmpty(false);
                 break;
