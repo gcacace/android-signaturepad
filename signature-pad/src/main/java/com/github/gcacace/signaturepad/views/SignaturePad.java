@@ -211,17 +211,17 @@ public class SignaturePad extends View {
                 if (isDoubleClick()) break;
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
-                addPoint(getNewPoint(eventX, eventY));
+                addPoint(getNewPoint(eventX, eventY),event.getPressure());
                 if(mOnSignedListener != null) mOnSignedListener.onStartSigning();
 
             case MotionEvent.ACTION_MOVE:
                 resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY));
+                addPoint(getNewPoint(eventX, eventY),event.getPressure());
                 break;
 
             case MotionEvent.ACTION_UP:
                 resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY));
+                addPoint(getNewPoint(eventX, eventY),event.getPressure());
                 getParent().requestDisallowInterceptTouchEvent(true);
                 setIsEmpty(false);
                 break;
@@ -437,7 +437,7 @@ public class SignaturePad extends View {
         mPointsCache.add(point);
     }
 
-    private void addPoint(TimedPoint newPoint) {
+    private void addPoint(TimedPoint newPoint, float pressure) {
         mPoints.add(newPoint);
 
         int pointsCount = mPoints.size();
@@ -464,7 +464,7 @@ public class SignaturePad extends View {
 
             // The new width is a function of the velocity. Higher velocities
             // correspond to thinner strokes.
-            float newWidth = strokeWidth(velocity);
+            float newWidth = mMaxWidth * pressure;//strokeWidth(velocity);
 
             // The Bezier's width starts out as last curve's final width, and
             // gradually changes to the stroke width just calculated. The new
