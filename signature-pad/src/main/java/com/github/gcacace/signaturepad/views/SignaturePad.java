@@ -18,6 +18,7 @@ import android.view.ViewTreeObserver;
 
 import com.github.gcacace.signaturepad.R;
 import com.github.gcacace.signaturepad.utils.Bezier;
+import com.github.gcacace.signaturepad.utils.BitmapUtils;
 import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
 import com.github.gcacace.signaturepad.utils.SvgBuilder;
 import com.github.gcacace.signaturepad.utils.TimedPoint;
@@ -60,9 +61,9 @@ public class SignaturePad extends View {
 
     //Default attribute values
     private final int DEFAULT_ATTR_PEN_MIN_WIDTH_PX = 3;
-    private final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 7;
+    private final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 10;
     private final int DEFAULT_ATTR_PEN_COLOR = Color.BLACK;
-    private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.9f;
+    private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.3f;
     private final boolean DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK = false;
 
     private Paint mPaint = new Paint();
@@ -101,6 +102,7 @@ public class SignaturePad extends View {
 
     }
 
+    /*
     @Override
     protected Parcelable onSaveInstanceState() {
         Bundle bundle = new Bundle();
@@ -110,7 +112,7 @@ public class SignaturePad extends View {
         }
         bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
         return bundle;
-    }
+    }*/
 
     @Override
     protected void onRestoreInstanceState(Parcelable state) {
@@ -211,17 +213,17 @@ public class SignaturePad extends View {
                 if (isDoubleClick()) break;
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
-                addPoint(getNewPoint(eventX, eventY));
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
                 if(mOnSignedListener != null) mOnSignedListener.onStartSigning();
 
             case MotionEvent.ACTION_MOVE:
                 resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY));
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
                 break;
 
             case MotionEvent.ACTION_UP:
                 resetDirtyRect(eventX, eventY);
-                addPoint(getNewPoint(eventX, eventY));
+                addPoint(getNewPoint(eventX, eventY), event.getPressure());
                 getParent().requestDisallowInterceptTouchEvent(true);
                 setIsEmpty(false);
                 break;
@@ -266,6 +268,16 @@ public class SignaturePad extends View {
         Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(whiteBgBitmap);
         canvas.drawColor(Color.WHITE);
+        canvas.drawBitmap(originalBitmap, 0, 0, null);
+        return whiteBgBitmap;
+    }
+
+    public Bitmap getTrimmedSignatureBitmap(boolean transparent) {
+        Bitmap originalBitmap = BitmapUtils.trim(getTransparentSignatureBitmap());
+
+        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(whiteBgBitmap);
+        canvas.drawColor(transparent ? Color.TRANSPARENT : Color.WHITE);
         canvas.drawBitmap(originalBitmap, 0, 0, null);
         return whiteBgBitmap;
     }
@@ -437,7 +449,7 @@ public class SignaturePad extends View {
         mPointsCache.add(point);
     }
 
-    private void addPoint(TimedPoint newPoint) {
+    private void addPoint(TimedPoint newPoint, float pressure) {
         mPoints.add(newPoint);
 
         int pointsCount = mPoints.size();
@@ -464,7 +476,7 @@ public class SignaturePad extends View {
 
             // The new width is a function of the velocity. Higher velocities
             // correspond to thinner strokes.
-            float newWidth = strokeWidth(velocity);
+            float newWidth = strokeWidth(velocity, pressure);
 
             // The Bezier's width starts out as last curve's final width, and
             // gradually changes to the stroke width just calculated. The new
@@ -553,8 +565,9 @@ public class SignaturePad extends View {
         return mControlTimedPointsCached.set(getNewPoint(m1X + tx, m1Y + ty), getNewPoint(m2X + tx, m2Y + ty));
     }
 
-    private float strokeWidth(float velocity) {
-        return Math.max(mMaxWidth / (velocity + 1), mMinWidth);
+    private float strokeWidth(float velocity, float pressure) {
+        float velocityWidth =  Math.max(mMaxWidth / (velocity + 1), mMinWidth);
+        return Math.max(velocityWidth*pressure,mMinWidth);
     }
 
     /**
