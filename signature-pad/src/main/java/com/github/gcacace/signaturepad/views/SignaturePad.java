@@ -18,6 +18,7 @@ import android.view.ViewTreeObserver;
 
 import com.github.gcacace.signaturepad.R;
 import com.github.gcacace.signaturepad.utils.Bezier;
+import com.github.gcacace.signaturepad.utils.BitmapUtils;
 import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
 import com.github.gcacace.signaturepad.utils.SvgBuilder;
 import com.github.gcacace.signaturepad.utils.TimedPoint;
@@ -267,6 +268,16 @@ public class SignaturePad extends View {
         Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(whiteBgBitmap);
         canvas.drawColor(Color.WHITE);
+        canvas.drawBitmap(originalBitmap, 0, 0, null);
+        return whiteBgBitmap;
+    }
+
+    public Bitmap getTrimmedSignatureBitmap(boolean transparent) {
+        Bitmap originalBitmap = BitmapUtils.trim(getTransparentSignatureBitmap());
+
+        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(whiteBgBitmap);
+        canvas.drawColor(transparent ? Color.TRANSPARENT : Color.WHITE);
         canvas.drawBitmap(originalBitmap, 0, 0, null);
         return whiteBgBitmap;
     }
