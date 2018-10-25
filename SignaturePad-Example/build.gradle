@@ -1,26 +1,25 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
-    buildToolsVersion project.ANDROID_BUILD_TOOLS_VERSION
-
-  defaultConfig {
-        minSdkVersion 9
-        targetSdkVersion Integer.parseInt(project.ANDROID_BUILD_TARGET_SDK_VERSION)
+    compileSdkVersion 28
+    buildToolsVersion '28.0.3'
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion 28
         versionName project.VERSION_NAME
-        versionCode Integer.parseInt(project.VERSION_CODE)
+
     }
-
     signingConfigs { release }
-
     buildTypes {
         release {
             minifyEnabled false
         }
     }
+    productFlavors {
+    }
 }
 
 dependencies {
-    compile project(":signature-pad")
-    compile 'com.android.support:appcompat-v7:25.3.1'
+    implementation project(':signature-pad')
+    implementation 'com.android.support:appcompat-v7:28.0.0'
 }
