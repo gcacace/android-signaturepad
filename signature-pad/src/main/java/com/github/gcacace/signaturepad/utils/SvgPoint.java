@@ -5,26 +5,22 @@ package com.github.gcacace.signaturepad.utils;
  */
 class SvgPoint {
 
-    final Integer x, y;
+    private final Integer x, y;
 
-    public SvgPoint(TimedPoint point) {
+    SvgPoint(TimedPoint point) {
         // one optimisation is to get rid of decimals as they are mostly non-significant in the
         // produced SVG image
         x = Math.round(point.x);
         y = Math.round(point.y);
     }
 
-    public SvgPoint(int x, int y) {
+    private SvgPoint(int x, int y) {
         this.x = x;
         this.y = y;
     }
 
-    public String toAbsoluteCoordinates() {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(x);
-        stringBuilder.append(",");
-        stringBuilder.append(y);
-        return stringBuilder.toString();
+    private String toAbsoluteCoordinates() {
+        return String.valueOf(x) + "," + y;
     }
 
     public String toRelativeCoordinates(final SvgPoint referencePoint) {
@@ -43,8 +39,7 @@ class SvgPoint {
 
         SvgPoint svgPoint = (SvgPoint) o;
 
-        if (!x.equals(svgPoint.x)) return false;
-        return y.equals(svgPoint.y);
+        return x.equals(svgPoint.x) && y.equals(svgPoint.y);
 
     }
 

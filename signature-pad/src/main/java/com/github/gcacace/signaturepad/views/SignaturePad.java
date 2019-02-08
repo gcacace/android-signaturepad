@@ -1,6 +1,7 @@
 package com.github.gcacace.signaturepad.views;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
@@ -26,6 +27,10 @@ import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+import static android.content.res.Configuration.ORIENTATION_PORTRAIT;
+import static android.content.res.Configuration.ORIENTATION_UNDEFINED;
 
 public class SignaturePad extends View {
     //View state
@@ -79,11 +84,15 @@ public class SignaturePad extends View {
 
         //Configurable parameters
         try {
-            mMinWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_penMinWidth, convertDpToPx(DEFAULT_ATTR_PEN_MIN_WIDTH_PX));
-            mMaxWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_penMaxWidth, convertDpToPx(DEFAULT_ATTR_PEN_MAX_WIDTH_PX));
+            mMinWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_penMinWidth,
+                    convertDpToPx(DEFAULT_ATTR_PEN_MIN_WIDTH_PX));
+            mMaxWidth = a.getDimensionPixelSize(R.styleable.SignaturePad_penMaxWidth,
+                    convertDpToPx(DEFAULT_ATTR_PEN_MAX_WIDTH_PX));
             mPaint.setColor(a.getColor(R.styleable.SignaturePad_penColor, DEFAULT_ATTR_PEN_COLOR));
-            mVelocityFilterWeight = a.getFloat(R.styleable.SignaturePad_velocityFilterWeight, DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT);
-            mClearOnDoubleClick = a.getBoolean(R.styleable.SignaturePad_clearOnDoubleClick, DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK);
+            mVelocityFilterWeight = a.getFloat(R.styleable.SignaturePad_velocityFilterWeight,
+                    DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT);
+            mClearOnDoubleClick = a.getBoolean(R.styleable.SignaturePad_clearOnDoubleClick,
+                    DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK);
         } finally {
             a.recycle();
         }
@@ -96,6 +105,8 @@ public class SignaturePad extends View {
 
         //Dirty rectangle to update only the changed portion of the view
         mDirtyRect = new RectF();
+
+//        this.orientation = context.getResources().getConfiguration().orientation;
 
         clearView();
 
@@ -134,7 +145,7 @@ public class SignaturePad extends View {
         try {
             setPenColor(getResources().getColor(colorRes));
         } catch (Resources.NotFoundException ex) {
-            setPenColor(Color.parseColor("#000000"));
+            setPenColor(Color.BLACK);
         }
     }
 
@@ -246,6 +257,15 @@ public class SignaturePad extends View {
         }
     }
 
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        ensureSignatureBitmap();
+        float scale = Math.min((float) w / mSignatureBitmap.getWidth(), (float) h / mSignatureBitmap.getHeight());
+        mSignatureBitmap = Bitmap.createScaledBitmap(mSignatureBitmap, (int)(w * scale), (int)(h * scale), true);
+        mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
+    }
+
     public void setOnSignedListener(OnSignedListener listener) {
         mOnSignedListener = listener;
     }
@@ -262,7 +282,8 @@ public class SignaturePad extends View {
 
     public Bitmap getSignatureBitmap() {
         Bitmap originalBitmap = getTransparentSignatureBitmap();
-        Bitmap whiteBgBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Bitmap whiteBgBitmap = Bitmap.createBitmap(
+                originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(whiteBgBitmap);
         canvas.drawColor(Color.WHITE);
         canvas.drawBitmap(originalBitmap, 0, 0, null);
@@ -549,7 +570,10 @@ public class SignaturePad extends View {
         float tx = s2.x - cmX;
         float ty = s2.y - cmY;
 
-        return mControlTimedPointsCached.set(getNewPoint(m1X + tx, m1Y + ty), getNewPoint(m2X + tx, m2Y + ty));
+        return mControlTimedPointsCached.set(
+                getNewPoint(m1X + tx, m1Y + ty),
+                getNewPoint(m2X + tx, m2Y + ty)
+        );
     }
 
     private float strokeWidth(float velocity) {

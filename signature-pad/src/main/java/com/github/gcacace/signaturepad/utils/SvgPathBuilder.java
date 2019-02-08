@@ -8,14 +8,14 @@ package com.github.gcacace.signaturepad.utils;
  */
 public class SvgPathBuilder {
 
-    public static final Character SVG_RELATIVE_CUBIC_BEZIER_CURVE = 'c';
-    public static final Character SVG_MOVE = 'M';
+    private static final Character SVG_RELATIVE_CUBIC_BEZIER_CURVE = 'c';
+    private static final Character SVG_MOVE = 'M';
     private final StringBuilder mStringBuilder;
     private final Integer mStrokeWidth;
     private final SvgPoint mStartPoint;
     private SvgPoint mLastPoint;
 
-    public SvgPathBuilder(final SvgPoint startPoint, final Integer strokeWidth) {
+    SvgPathBuilder(final SvgPoint startPoint, final Integer strokeWidth) {
         mStrokeWidth = strokeWidth;
         mStartPoint = startPoint;
         mLastPoint = startPoint;
@@ -57,16 +57,8 @@ public class SvgPathBuilder {
         final String sControlPoint2 = controlPoint2.toRelativeCoordinates(mLastPoint);
         final String sEndPoint = endPoint.toRelativeCoordinates(mLastPoint);
 
-        final StringBuilder sb = new StringBuilder();
-        sb.append(sControlPoint1);
-        sb.append(" ");
-        sb.append(sControlPoint2);
-        sb.append(" ");
-        sb.append(sEndPoint);
-        sb.append(" ");
-
         // discard zero curve
-        final String svg = sb.toString();
+        final String svg = sControlPoint1 + " " + sControlPoint2 + " " + sEndPoint + " ";
         if ("c0 0 0 0 0 0".equals(svg)) {
             return "";
         } else {
