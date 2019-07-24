@@ -142,3 +142,4 @@ Currently doesn't support screen rotations. Pull requests are welcome!
 
     Commit-1
     commit-2
+    commit-3
