@@ -1,6 +1,6 @@
 package com.github.gcacace.signaturepad.utils;
 
-import android.databinding.BindingAdapter;
+import androidx.databinding.BindingAdapter;
 
 import com.github.gcacace.signaturepad.views.SignaturePad;
 
