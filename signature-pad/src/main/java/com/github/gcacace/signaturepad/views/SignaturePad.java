@@ -12,6 +12,7 @@ import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -29,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SignaturePad extends View {
+    private static final String TAG = SignaturePad.class.getName();
+
     //View state
     private List<TimedPoint> mPoints;
     private boolean mIsEmpty;
@@ -108,13 +111,18 @@ public class SignaturePad extends View {
 
     @Override
     protected Parcelable onSaveInstanceState() {
-        Bundle bundle = new Bundle();
-        bundle.putParcelable("superState", super.onSaveInstanceState());
-        if (this.mHasEditState == null || this.mHasEditState) {
-            this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+        try {
+            Bundle bundle = new Bundle();
+            bundle.putParcelable("superState", super.onSaveInstanceState());
+            if (this.mHasEditState == null || this.mHasEditState) {
+                this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+            }
+            bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
+            return bundle;
+        } catch(Exception e) {
+            Log.w(TAG, String.format("error saving instance state: %s", e.getMessage()));
+            return super.onSaveInstanceState();
         }
-        bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
-        return bundle;
     }
 
     @Override
