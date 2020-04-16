@@ -412,6 +412,10 @@ public class SignaturePad extends View {
         return false;
     }
 
+    public void setClearOnDoubleClick(boolean clearOnDoubleClick) {
+        mClearOnDoubleClick = clearOnDoubleClick;
+    }
+
     private TimedPoint getNewPoint(float x, float y) {
         int mCacheSize = mPointsCache.size();
         TimedPoint timedPoint;
