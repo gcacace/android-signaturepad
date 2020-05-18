@@ -53,6 +53,7 @@ public class SignaturePad extends View {
     private float mVelocityFilterWeight;
     private OnSignedListener mOnSignedListener;
     private boolean mClearOnDoubleClick;
+    private boolean mSaveState;
 
     //Double click detector
     private GestureDetector mGestureDetector;
@@ -63,6 +64,7 @@ public class SignaturePad extends View {
     private final int DEFAULT_ATTR_PEN_COLOR = Color.BLACK;
     private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.9f;
     private final boolean DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK = false;
+    private final boolean DEFAULT_ATTR_SAVE_STATE = true;
 
     private Paint mPaint = new Paint();
     private Bitmap mSignatureBitmap = null;
@@ -83,6 +85,7 @@ public class SignaturePad extends View {
             mPaint.setColor(a.getColor(R.styleable.SignaturePad_penColor, DEFAULT_ATTR_PEN_COLOR));
             mVelocityFilterWeight = a.getFloat(R.styleable.SignaturePad_velocityFilterWeight, DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT);
             mClearOnDoubleClick = a.getBoolean(R.styleable.SignaturePad_clearOnDoubleClick, DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK);
+            mSaveState = a.getBoolean(R.styleable.SignaturePad_saveState, DEFAULT_ATTR_SAVE_STATE);
         } finally {
             a.recycle();
         }
@@ -108,13 +111,17 @@ public class SignaturePad extends View {
 
     @Override
     protected Parcelable onSaveInstanceState() {
-        Bundle bundle = new Bundle();
-        bundle.putParcelable("superState", super.onSaveInstanceState());
-        if (this.mHasEditState == null || this.mHasEditState) {
-            this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+        if (mSaveState) {
+            Bundle bundle = new Bundle();
+            bundle.putParcelable("superState", super.onSaveInstanceState());
+            if (this.mHasEditState == null || this.mHasEditState) {
+                this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+            }
+            bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
+            return bundle;
+        } else {
+            return super.onSaveInstanceState();
         }
-        bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
-        return bundle;
     }
 
     @Override
