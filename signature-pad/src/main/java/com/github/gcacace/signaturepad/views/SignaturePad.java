@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -12,6 +13,7 @@ import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -25,10 +27,21 @@ import com.github.gcacace.signaturepad.utils.TimedPoint;
 import com.github.gcacace.signaturepad.view.ViewCompat;
 import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 public class SignaturePad extends View {
+    private static final String TAG = "SignaturePad";
+
+    private static final String KEY_SIGNATURE_BITMAP_URL = "signatureBitmapUrl";
+    private static final String TEMP_FILE_PREFIX = "signature-pad";
+    private static final String TEMP_FILE_EXT = ".png";
+
     //View state
     private List<TimedPoint> mPoints;
     private boolean mIsEmpty;
@@ -67,6 +80,7 @@ public class SignaturePad extends View {
     private Paint mPaint = new Paint();
     private Bitmap mSignatureBitmap = null;
     private Canvas mSignatureBitmapCanvas = null;
+    private final String signatureStateFilePath;
 
     public SignaturePad(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -104,16 +118,97 @@ public class SignaturePad extends View {
                 return onDoubleClick();
             }
         });
+
+
+        signatureStateFilePath = safeCreateTempFilePath();
+    }
+
+    /**
+     * Tries to create temp file and get its path. Exceptions suppressed.
+     *
+     * @return Returns absolute path or null.
+     */
+    private String safeCreateTempFilePath() {
+        String temporaryFilePath;
+
+        try {
+            temporaryFilePath = File.createTempFile(
+                    TEMP_FILE_PREFIX,
+                    TEMP_FILE_EXT,
+                    getContext().getFilesDir()
+            ).getAbsolutePath();
+        } catch (IOException exception) {
+            Log.e(TAG, "Failed to create temp file");
+            temporaryFilePath = null;
+        }
+
+        Log.d(TAG, String.format("Will use [%s] to store signature bitmap when needed", temporaryFilePath));
+
+        return temporaryFilePath;
+    }
+
+    private void updateBundleWithSignatureStateFilePath(Bundle bundle) {
+        if (signatureStateFilePath != null) {
+            bundle.putString(KEY_SIGNATURE_BITMAP_URL, signatureStateFilePath);
+        } else {
+            Log.e(TAG, "Skipped bundle update as no temp file to work with");
+        }
+    }
+
+    private void storeBitmapToSignatureStateFile() {
+        Executors.newSingleThreadExecutor().submit(() -> {
+            if (signatureStateFilePath != null) {
+                try (FileOutputStream fileOutputStream = new FileOutputStream(signatureStateFilePath)) {
+                    if (mBitmapSavedState.compress(Bitmap.CompressFormat.PNG, 80, fileOutputStream)) {
+                        Log.d(TAG, "Succeeded to compress bitmap to output stream");
+                    } else {
+                        Log.e(TAG, "Failed to compress bitmap to output stream");
+                    }
+                } catch (FileNotFoundException fileNotFoundException) {
+                    Log.e(TAG, "Failed to write bitmap to output stream. File not found.");
+                } catch (IOException ioException) {
+                    Log.e(TAG, "Failed to write bitmap to output stream. IO error.");
+                }
+            } else {
+                Log.e(TAG, "Skipped bitmap file save as no temp file to work with");
+            }
+        });
+    }
+
+    private void readBitmapFromSignatureStateFile(Bundle bundle) {
+        String path = bundle.getString(KEY_SIGNATURE_BITMAP_URL);
+
+        if (path != null) {
+            Executors.newSingleThreadExecutor().submit(() -> {
+                Log.d(TAG, String.format("Will un-bundle bitmap from [%s]", path));
+
+                mBitmapSavedState = BitmapFactory.decodeFile(path);
+                this.setSignatureBitmap(mBitmapSavedState);
+
+                Log.d(TAG, String.format("Decoded bitmap is %d bytes", mBitmapSavedState.getByteCount()));
+                deleteTempFilePath(path);
+            });
+        }
+    }
+
+    private void deleteTempFilePath(String path) {
+        File file = new File(path);
+        Log.d(TAG, String.format("Was temp file delete successful? %b", file.delete()));
     }
 
     @Override
     protected Parcelable onSaveInstanceState() {
+        storeBitmapToSignatureStateFile();
+
         Bundle bundle = new Bundle();
         bundle.putParcelable("superState", super.onSaveInstanceState());
+
         if (this.mHasEditState == null || this.mHasEditState) {
             this.mBitmapSavedState = this.getTransparentSignatureBitmap();
         }
-        bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
+
+        updateBundleWithSignatureStateFilePath(bundle);
+
         return bundle;
     }
 
@@ -121,8 +216,9 @@ public class SignaturePad extends View {
     protected void onRestoreInstanceState(Parcelable state) {
         if (state instanceof Bundle) {
             Bundle bundle = (Bundle) state;
-            this.setSignatureBitmap((Bitmap) bundle.getParcelable("signatureBitmap"));
-            this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
+
+            readBitmapFromSignatureStateFile(bundle);
+
             state = bundle.getParcelable("superState");
         }
         this.mHasEditState = false;
