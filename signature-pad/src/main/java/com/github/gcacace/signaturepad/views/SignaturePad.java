@@ -156,23 +156,29 @@ public class SignaturePad extends View {
     }
 
     private void storeBitmapToSignatureStateFile() {
-        Executors.newSingleThreadExecutor().submit(() -> {
-            if (signatureStateFilePath != null) {
-                try (FileOutputStream fileOutputStream = new FileOutputStream(signatureStateFilePath)) {
-                    if (mBitmapSavedState.compress(Bitmap.CompressFormat.PNG, 80, fileOutputStream)) {
-                        Log.d(TAG, "Succeeded to compress bitmap to output stream");
-                    } else {
-                        Log.e(TAG, "Failed to compress bitmap to output stream");
+        try {
+            Executors.newSingleThreadExecutor().submit(() -> {
+                Log.d(TAG, "Will save bitmap to path " + signatureStateFilePath);
+
+                if (signatureStateFilePath != null) {
+                    try (FileOutputStream fileOutputStream = new FileOutputStream(signatureStateFilePath)) {
+                        if (mBitmapSavedState.compress(Bitmap.CompressFormat.PNG, 80, fileOutputStream)) {
+                            Log.d(TAG, "Succeeded to compress bitmap to output stream");
+                        } else {
+                            Log.e(TAG, "Failed to compress bitmap to output stream");
+                        }
+                    } catch (FileNotFoundException fileNotFoundException) {
+                        Log.e(TAG, "Failed to write bitmap to output stream. File not found.");
+                    } catch (IOException ioException) {
+                        Log.e(TAG, "Failed to write bitmap to output stream. IO error.");
                     }
-                } catch (FileNotFoundException fileNotFoundException) {
-                    Log.e(TAG, "Failed to write bitmap to output stream. File not found.");
-                } catch (IOException ioException) {
-                    Log.e(TAG, "Failed to write bitmap to output stream. IO error.");
+                } else {
+                    Log.e(TAG, "Skipped bitmap file save as no temp file to work with");
                 }
-            } else {
-                Log.e(TAG, "Skipped bitmap file save as no temp file to work with");
-            }
-        });
+            }).get();
+        } catch (Exception exception) {
+            Log.e(TAG, "Failed to wait for future completion with " + exception.getMessage());
+        }
     }
 
     private void readBitmapFromSignatureStateFile(Bundle bundle) {
@@ -183,9 +189,14 @@ public class SignaturePad extends View {
                 Log.d(TAG, String.format("Will un-bundle bitmap from [%s]", path));
 
                 mBitmapSavedState = BitmapFactory.decodeFile(path);
-                this.setSignatureBitmap(mBitmapSavedState);
 
-                Log.d(TAG, String.format("Decoded bitmap is %d bytes", mBitmapSavedState.getByteCount()));
+                if (mBitmapSavedState == null) {
+                    Log.d(TAG, "Failed to decode bitmap from path " + path);
+                } else {
+                    this.setSignatureBitmap(mBitmapSavedState);
+
+                    Log.d(TAG, String.format("Decoded bitmap is %d bytes", mBitmapSavedState.getByteCount()));
+                }
                 deleteTempFilePath(path);
             });
         }
@@ -198,8 +209,6 @@ public class SignaturePad extends View {
 
     @Override
     protected Parcelable onSaveInstanceState() {
-        storeBitmapToSignatureStateFile();
-
         Bundle bundle = new Bundle();
         bundle.putParcelable("superState", super.onSaveInstanceState());
 
@@ -207,6 +216,7 @@ public class SignaturePad extends View {
             this.mBitmapSavedState = this.getTransparentSignatureBitmap();
         }
 
+        storeBitmapToSignatureStateFile();
         updateBundleWithSignatureStateFilePath(bundle);
 
         return bundle;
@@ -344,6 +354,21 @@ public class SignaturePad extends View {
     protected void onDraw(Canvas canvas) {
         if (mSignatureBitmap != null) {
             canvas.drawBitmap(mSignatureBitmap, 0, 0, mPaint);
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        recycleBitmapSafely(mBitmapSavedState);
+        recycleBitmapSafely(mSignatureBitmap);
+        mBitmapSavedState = null;
+        mSignatureBitmap = null;
+    }
+
+    private void recycleBitmapSafely(Bitmap bitmap) {
+        if (bitmap != null && !bitmap.isRecycled()) {
+            bitmap.recycle();
         }
     }
 
