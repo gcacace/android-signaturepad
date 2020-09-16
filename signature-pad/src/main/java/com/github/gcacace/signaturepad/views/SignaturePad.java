@@ -159,6 +159,7 @@ public class SignaturePad extends View {
      */
     public void setMinWidth(float minWidth) {
         mMinWidth = convertDpToPx(minWidth);
+        mLastWidth = (mMinWidth + mMaxWidth) / 2f;
     }
 
     /**
@@ -168,6 +169,7 @@ public class SignaturePad extends View {
      */
     public void setMaxWidth(float maxWidth) {
         mMaxWidth = convertDpToPx(maxWidth);
+        mLastWidth = (mMinWidth + mMaxWidth) / 2f;
     }
 
     /**
@@ -183,7 +185,7 @@ public class SignaturePad extends View {
         mSvgBuilder.clear();
         mPoints = new ArrayList<>();
         mLastVelocity = 0;
-        mLastWidth = (mMinWidth + mMaxWidth) / 2;
+        mLastWidth = (mMinWidth + mMaxWidth) / 2f;
 
         if (mSignatureBitmap != null) {
             mSignatureBitmap = null;
