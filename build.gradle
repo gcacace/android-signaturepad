@@ -10,11 +10,6 @@ buildscript {
     }
 }
 
-plugins {
-    id 'com.jfrog.bintray' version '1.8.4'
-    id 'maven-publish'
-}
-
 allprojects {
     version = VERSION_NAME
     group = GROUP
