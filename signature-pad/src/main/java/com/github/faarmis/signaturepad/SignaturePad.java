@@ -1,4 +1,4 @@
-package com.github.gcacace.signaturepad.views;
+package com.github.faarmis.signaturepad;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -17,13 +17,12 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
-import com.github.gcacace.signaturepad.R;
-import com.github.gcacace.signaturepad.utils.Bezier;
-import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
-import com.github.gcacace.signaturepad.utils.SvgBuilder;
-import com.github.gcacace.signaturepad.utils.TimedPoint;
-import com.github.gcacace.signaturepad.view.ViewCompat;
-import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
+import com.github.faarmis.signaturepad.utils.Bezier;
+import com.github.faarmis.signaturepad.utils.ControlTimedPoints;
+import com.github.faarmis.signaturepad.utils.SvgBuilder;
+import com.github.faarmis.signaturepad.utils.TimedPoint;
+import com.github.faarmis.signaturepad.view.ViewCompat;
+import com.github.faarmis.signaturepad.view.ViewTreeObserverCompat;
 
 import java.util.ArrayList;
 import java.util.List;

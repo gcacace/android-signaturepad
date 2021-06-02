@@ -33,7 +33,7 @@
                 android:layout_alignParentBottom="true"
                 android:text="@string/agreement" />
 
-        <com.github.gcacace.signaturepad.views.SignaturePad
+        <com.github.faarmis.signaturepad.SignaturePad
                 android:layout_width="fill_parent"
                 android:layout_height="fill_parent"
                 android:id="@+id/signature_pad" />

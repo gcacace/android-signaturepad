@@ -1,4 +1,4 @@
-package com.github.gcacace.signaturepad;
+package com.github.faarmis.signaturepad.sample;
 
 import android.Manifest;
 import android.app.Activity;
@@ -17,15 +17,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.github.gcacace.signaturepad.views.SignaturePad;
-
+import com.github.faarmis.signaturepad.SignaturePad;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-
-import it.gcacace.signaturepad.R;
 
 public class MainActivity extends Activity {
 

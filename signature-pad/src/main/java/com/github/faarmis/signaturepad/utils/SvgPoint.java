@@ -1,4 +1,4 @@
-package com.github.gcacace.signaturepad.utils;
+package com.github.faarmis.signaturepad.utils;
 
 /**
  * Represent a point as it would be in the generated SVG document.

@@ -3,7 +3,7 @@ Android Signature Pad
 
 Android Signature Pad is an Android library for drawing smooth signatures. It uses variable width Bézier curve interpolation based on [Smoother Signatures](http://corner.squareup.com/2012/07/smoother-signatures.html) post by [Square](https://squareup.com).
 
-![Screenshot](https://github.com/gcacace/android-signaturepad/raw/master/header.png)
+![Screenshot](https://github.com/faarmis/android-signaturepad/raw/master/header.png)
 
 ## Features
  * Bézier implementation for a smoother line
@@ -21,24 +21,12 @@ Latest version of the library can be found on Maven Central.
 Open your `build.gradle` and make sure that Maven Central repository is declared into `repositories` section:
 ```gradle
    repositories {
-       mavenCentral()
+       maven { url 'https://jitpack.io' }
    }
 ```
 Then, include the library as dependency:
 ```gradle
-compile 'com.github.gcacace:signature-pad:1.3.1'
-```
-
-### For Maven users
-
-Add this dependency to your `pom.xml`:
-```xml
-<dependency>
-  <groupId>com.github.gcacace</groupId>
-  <artifactId>signature-pad</artifactId>
-  <version>1.3.1</version>
-  <type>aar</type>
-</dependency>
+implementation 'com.github.faarmis:android-signaturepad:1.3.1'
 ```
 
 ## Usage
@@ -47,7 +35,7 @@ Add this dependency to your `pom.xml`:
 
 1. Add the `SignaturePad` view to the layout you want to show.
 ```xml
- <com.github.gcacace.signaturepad.views.SignaturePad
+ <com.github.faarmis.signaturepad.SignaturePad
      xmlns:android="http://schemas.android.com/apk/res/android"
      xmlns:app="http://schemas.android.com/apk/res-auto"
      android:id="@+id/signature_pad"
@@ -99,7 +87,7 @@ Add this dependency to your `pom.xml`:
 The `SignaturePad` view has custom Data Binding attribute setters for all the listener events:
 
 ```xml
- <com.github.gcacace.signaturepad.views.SignaturePad
+ <com.github.faarmis.signaturepad.SignaturePad
      xmlns:android="http://schemas.android.com/apk/res/android"
      xmlns:bind="http://schemas.android.com/apk/res-auto"
      android:id="@+id/signature_pad"
@@ -110,21 +98,10 @@ The `SignaturePad` view has custom Data Binding attribute setters for all the li
      bind:onClear="@{activity.onClear}" />
 ```
 
-## Cordova Plugin
-
-Thanks to [netinhoteixeira](https://github.com/netinhoteixeira/), there is a Cordova plugin using that library.
-Please refer to https://github.com/netinhoteixeira/cordova-plugin-signature-view.
-
-## NativeScript Plugin
-Thanks to [bradmartin](https://github.com/bradmartin), there is a NativeScript plugin.
-Please refer to [https://github.com/bradmartin/nativescript-signaturepad](https://github.com/bradmartin/nativescript-signaturepad).
-
-## Caveats
-
-Currently doesn't support screen rotations. Pull requests are welcome!
 
 ## License
 
+    Copyright 2021 FAARMis
     Copyright 2014-2016 Gianluca Cacace
 
     Licensed under the Apache License, Version 2.0 (the "License");

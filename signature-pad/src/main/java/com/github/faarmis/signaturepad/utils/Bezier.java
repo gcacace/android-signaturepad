@@ -1,4 +1,4 @@
-package com.github.gcacace.signaturepad.utils;
+package com.github.faarmis.signaturepad.utils;
 
 public class Bezier {
 

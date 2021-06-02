@@ -1,4 +1,4 @@
-package com.github.gcacace.signaturepad.utils;
+package com.github.faarmis.signaturepad.utils;
 
 /**
  * Created by gcacace on 28/02/14.
