@@ -1,5 +1,8 @@
 Android Signature Pad
 ====================
+[![Android CI](https://github.com/faarmis/android-signaturepad/actions/workflows/android.yml/badge.svg)](https://github.com/faarmis/android-signaturepad/actions/workflows/android.yml)
+
+> This project have been folked from [Gianluca, Android Signature Pad](https://github.com/gcacace/android-signaturepad) to review, modify and re-distribute in scope of FAARMis Projects.
 
 Android Signature Pad is an Android library for drawing smooth signatures. It uses variable width Bézier curve interpolation based on [Smoother Signatures](http://corner.squareup.com/2012/07/smoother-signatures.html) post by [Square](https://squareup.com).
 
