@@ -307,7 +307,13 @@ public class SignaturePad extends View {
 
             Canvas canvas = new Canvas(mSignatureBitmap);
             canvas.drawBitmap(signature, drawMatrix, null);
-            setIsEmpty(false);
+
+            //determine whether the passing bitmap is an empty bitmap
+            //if it is an empty bitmap, do not set mIsEmpty as false.
+            //fix the bug of nothing drew on signature pad
+            //and onRestoreInstanceState is called (for example rotate the screen to landscape)
+            //mIsEmpty set to false.
+            setIsEmpty(isBitmapEmpty(signature));
             invalidate();
         }
         // View not laid out yet e.g. called from onCreate(), onRestoreInstanceState()...
@@ -328,6 +334,12 @@ public class SignaturePad extends View {
     public Bitmap getTransparentSignatureBitmap() {
         ensureSignatureBitmap();
         return mSignatureBitmap;
+    }
+
+    //determine whether bitmap is empty
+    private boolean isBitmapEmpty(Bitmap bitmap) {
+        Bitmap emptyBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
+        return bitmap.sameAs(emptyBitmap);
     }
 
     public Bitmap getTransparentSignatureBitmap(boolean trimBlankSpace) {
