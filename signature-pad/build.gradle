@@ -11,9 +11,18 @@ android {
         consumerProguardFiles 'proguard-rules-consumer.pro'
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
     dataBinding {
         enabled = true
     }
+}
+
+dependencies {
+    implementation "androidx.core:core:1.15.0"
 }
 
 project.ext {
