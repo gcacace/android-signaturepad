@@ -1,11 +1,13 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+}
 
 android {
     namespace project.PROJECT_NAMESPACE_APP
     compileSdk Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
 
     defaultConfig {
-        minSdkVersion 14
+        minSdkVersion 21
         targetSdkVersion Integer.parseInt(project.ANDROID_BUILD_TARGET_SDK_VERSION)
         versionName project.VERSION_NAME
         versionCode Integer.parseInt(project.VERSION_CODE)
@@ -18,9 +20,20 @@ android {
             minifyEnabled false
         }
     }
+
 }
 
 dependencies {
     implementation project(":signature-pad")
     implementation 'androidx.appcompat:appcompat:1.7.0'
+}
+
+configurations.implementation {
+    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
