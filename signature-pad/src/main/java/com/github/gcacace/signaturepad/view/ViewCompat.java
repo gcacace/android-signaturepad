@@ -4,6 +4,11 @@ import android.os.Build;
 import android.view.View;
 
 public class ViewCompat {
+
+    private ViewCompat() {
+        // empty constructor
+    }
+
     /**
      * Returns true if {@code view} has been through at least one layout since it
      * was last attached to or detached from a window.

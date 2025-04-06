@@ -5,6 +5,11 @@ import android.os.Build;
 import android.view.ViewTreeObserver;
 
 public class ViewTreeObserverCompat {
+
+    private ViewTreeObserverCompat() {
+        // empty constructor
+    }
+
     /**
      * Remove a previously installed global layout callback.
      * @param observer the view observer

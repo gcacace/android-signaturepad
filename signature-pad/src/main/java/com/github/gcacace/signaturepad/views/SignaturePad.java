@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -18,6 +19,10 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
+import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.core.os.BundleCompat;
+
 import com.github.gcacace.signaturepad.R;
 import com.github.gcacace.signaturepad.utils.Bezier;
 import com.github.gcacace.signaturepad.utils.ControlTimedPoints;
@@ -26,11 +31,14 @@ import com.github.gcacace.signaturepad.utils.TimedPoint;
 import com.github.gcacace.signaturepad.view.ViewCompat;
 import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SignaturePad extends View {
     private static final String TAG = SignaturePad.class.getName();
+    private static final String ARG_SIGNATURE_BITMAP = "signatureBitmap";
+    private static final String ARG_SUPER_STATE = "superState";
 
     //View state
     private List<TimedPoint> mPoints;
@@ -61,11 +69,11 @@ public class SignaturePad extends View {
     private GestureDetector mGestureDetector;
 
     //Default attribute values
-    private final int DEFAULT_ATTR_PEN_MIN_WIDTH_PX = 3;
-    private final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 7;
-    private final int DEFAULT_ATTR_PEN_COLOR = Color.BLACK;
-    private final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.9f;
-    private final boolean DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK = false;
+    private static final int DEFAULT_ATTR_PEN_MIN_WIDTH_PX = 3;
+    private static final int DEFAULT_ATTR_PEN_MAX_WIDTH_PX = 7;
+    private static final int DEFAULT_ATTR_PEN_COLOR = Color.BLACK;
+    private static final float DEFAULT_ATTR_VELOCITY_FILTER_WEIGHT = 0.9f;
+    private static final boolean DEFAULT_ATTR_CLEAR_ON_DOUBLE_CLICK = false;
 
     private Paint mPaint = new Paint();
     private Bitmap mSignatureBitmap = null;
@@ -103,7 +111,7 @@ public class SignaturePad extends View {
 
         mGestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
             @Override
-            public boolean onDoubleTap(MotionEvent e) {
+            public boolean onDoubleTap(@NonNull MotionEvent e) {
                 return onDoubleClick();
             }
         });
@@ -145,7 +153,7 @@ public class SignaturePad extends View {
      */
     public void setPenColorRes(int colorRes) {
         try {
-            setPenColor(getResources().getColor(colorRes));
+            setPenColor(ContextCompat.getColor(getContext(), colorRes));
         } catch (Resources.NotFoundException ex) {
             setPenColor(Color.parseColor("#000000"));
         }
@@ -219,7 +227,7 @@ public class SignaturePad extends View {
         float eventY = event.getY();
 
         switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_DOWN -> {
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
                 if (mGestureDetector.onTouchEvent(event)) break;
@@ -227,25 +235,26 @@ public class SignaturePad extends View {
                 mLastTouchY = eventY;
                 addPoint(getNewPoint(eventX, eventY));
                 if (mOnSignedListener != null) mOnSignedListener.onStartSigning();
+            }
 
-            case MotionEvent.ACTION_MOVE:
+            case MotionEvent.ACTION_MOVE -> {
                 resetDirtyRect(eventX, eventY);
                 addPoint(getNewPoint(eventX, eventY));
                 setIsEmpty(false);
-                break;
+            }
 
-            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_UP -> {
                 resetDirtyRect(eventX, eventY);
                 addPoint(getNewPoint(eventX, eventY));
                 getParent().requestDisallowInterceptTouchEvent(true);
-                break;
+            }
 
-            default:
+            default -> {
                 return false;
+            }
         }
 
-        //invalidate();
-        invalidate(
+        postInvalidate(
                 (int) (mDirtyRect.left - mMaxWidth),
                 (int) (mDirtyRect.top - mMaxWidth),
                 (int) (mDirtyRect.right + mMaxWidth),
@@ -343,10 +352,10 @@ public class SignaturePad extends View {
 
         int backgroundColor = Color.TRANSPARENT;
 
-        int xMin = Integer.MAX_VALUE,
-                xMax = Integer.MIN_VALUE,
-                yMin = Integer.MAX_VALUE,
-                yMax = Integer.MIN_VALUE;
+        int xMin = Integer.MAX_VALUE;
+        int xMax = Integer.MIN_VALUE;
+        int yMin = Integer.MAX_VALUE;
+        int yMax = Integer.MIN_VALUE;
 
         boolean foundPixel = false;
 
@@ -503,7 +512,7 @@ public class SignaturePad extends View {
 
         for (int i = 0; i < drawSteps; i++) {
             // Calculate the Bezier (x, y) coordinate for this step.
-            float t = ((float) i) / drawSteps;
+            float t = i / drawSteps;
             float tt = t * t;
             float ttt = tt * t;
             float u = 1 - t;
