@@ -49,8 +49,6 @@ public class SignaturePad extends View {
     private float mLastVelocity;
     private float mLastWidth;
     private RectF mDirtyRect;
-    private Bitmap mBitmapSavedState;
-
     private final SvgBuilder mSvgBuilder = new SvgBuilder();
 
     // Cache
@@ -123,9 +121,9 @@ public class SignaturePad extends View {
             Bundle bundle = new Bundle();
             bundle.putParcelable("superState", super.onSaveInstanceState());
             if (this.mHasEditState == null || this.mHasEditState) {
-                this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+                Bitmap signatureBitmap = this.getTransparentSignatureBitmap();
+                bundle.putByteArray("bitmapByteArray", getByteArrayFromBitMap(signatureBitmap));
             }
-            bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
             return bundle;
         } catch(Exception e) {
             Log.w(TAG, String.format("error saving instance state: %s", e.getMessage()));
@@ -135,10 +133,12 @@ public class SignaturePad extends View {
 
     @Override
     protected void onRestoreInstanceState(Parcelable state) {
-        if (state instanceof Bundle) {
-            Bundle bundle = (Bundle) state;
-            this.setSignatureBitmap((Bitmap) bundle.getParcelable("signatureBitmap"));
-            this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
+        if (state instanceof Bundle bundle) {
+            byte[] stream = bundle.getByteArray("bitmapByteArray");
+            if (stream != null) {
+                Bitmap signatureBitmap = BitmapFactory.decodeByteArray(stream, 0, stream.length);
+                this.setSignatureBitmap(signatureBitmap);
+            }
             state = bundle.getParcelable("superState");
         }
         this.mHasEditState = false;
@@ -625,6 +625,17 @@ public class SignaturePad extends View {
 
     private int convertDpToPx(float dp) {
         return Math.round(getContext().getResources().getDisplayMetrics().density * dp);
+    }
+
+    /**
+     * Convert bitmap to ByteArray to save in bundle
+     * @param bitmap signature bitmap
+     * @return ByteArray from the bitmap
+     */
+    private byte[] getByteArrayFromBitMap(Bitmap bitmap) {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.WEBP, 100, stream);
+        return stream.toByteArray();
     }
 
     public interface OnSignedListener {
