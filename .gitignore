@@ -20,6 +20,12 @@ captures/
 # Keystore files
 *.jks
 
+# Signing keys and secrets (NEVER commit these)
+*.asc
+*.gpg
+*.key
+secring.*
+
 # Release/publishing credentials
 bintray.properties
 release.properties

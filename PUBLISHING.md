@@ -38,21 +38,31 @@ only the maintainer can perform** — they cannot be scripted in this repo.
 Central requires every artifact to be PGP-signed.
 
 ```bash
-# Generate a new key (RSA 4096, no expiry or a long one)
+# Generate a new key (RSA 4096, no expiry). For a CI-friendly, passphrase-less
+# key, use a batch file instead of the interactive prompt:
+#   printf '%s\n' 'Key-Type: RSA' 'Key-Length: 4096' 'Subkey-Type: RSA' \
+#     'Subkey-Length: 4096' 'Name-Real: Gianluca Cacace' \
+#     'Name-Email: gianluca.cacace@gmail.com' 'Expire-Date: 0' \
+#     '%no-protection' '%commit' | gpg --batch --generate-key /dev/stdin
 gpg --full-generate-key
 
 # List it and note the KEY_ID (the long hex after the algorithm, e.g. rsa4096/ABCD1234...)
 gpg --list-secret-keys --keyid-format=long
 
-# Publish the PUBLIC key so Central can verify signatures
-gpg --keyserver keyserver.ubuntu.com --send-keys <KEY_ID>
+# Publish the PUBLIC key so Central can verify signatures.
+# NOTE: `gpg --send-keys` is broken in some recent GnuPG 2.5.x builds
+# ("keyserver send failed: Invalid argument"). If so, upload via HTTP instead:
+gpg --armor --export <KEY_ID> > pubkey.asc
+curl -s "https://keyserver.ubuntu.com/pks/add" --data-urlencode "keytext@pubkey.asc"
+# keyserver.ubuntu.com is the one Central checks and needs no email verification.
 
 # Export the SECRET key in ASCII-armored form for the Gradle build to consume
 gpg --armor --export-secret-keys <KEY_ID> > signing-key.asc
 ```
 
-Keep `signing-key.asc` **out of git** (it is covered by `*.asc` / credentials
-patterns — verify before committing anything).
+Keep `signing-key.asc` **out of git**. The repo's `.gitignore` now covers
+`*.asc`, `*.gpg`, `*.key`, and `secring.*` — but verify with
+`git check-ignore signing-key.asc` before committing anything.
 
 ### 3. Local credentials
 
@@ -64,7 +74,16 @@ mavenCentralPassword=<portal-token-password>
 
 # In-memory signing (preferred — points at the exported key)
 signingInMemoryKey=<paste the full contents of signing-key.asc, newlines as \n>
-signingInMemoryKeyPassword=<key passphrase>
+signingInMemoryKeyPassword=<key passphrase, or LEAVE EMPTY for a no-passphrase key>
+```
+
+> If the key was generated with `%no-protection` (no passphrase), the
+> `signingInMemoryKeyPassword` value **must be empty** — a leftover placeholder
+> there will be used as the passphrase and signing will fail.
+
+To convert `signing-key.asc` into the single-line `signingInMemoryKey` value:
+```bash
+awk 'BEGIN{ORS="\\n"} {print}' signing-key.asc   # then paste the result
 ```
 
 Alternatively use the classic `signing.keyId` / `signing.password` /
