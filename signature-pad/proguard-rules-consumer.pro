@@ -1,2 +1,2 @@
--dontwarn android.databinding.**
--keep class android.databinding.** { *; }
+-dontwarn androidx.databinding.**
+-keep class androidx.databinding.** { *; }

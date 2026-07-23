@@ -1,16 +1,23 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+}
 
 android {
-    compileSdkVersion Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
+    namespace 'it.gcacace.signaturepad'
+    compileSdk Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
 
-  defaultConfig {
-        minSdkVersion 14
+    defaultConfig {
+        applicationId 'it.gcacace.signaturepad'
+        minSdkVersion 21
         targetSdkVersion Integer.parseInt(project.ANDROID_BUILD_TARGET_SDK_VERSION)
         versionName project.VERSION_NAME
         versionCode Integer.parseInt(project.VERSION_CODE)
     }
 
-    signingConfigs { release }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 
     buildTypes {
         release {
@@ -21,5 +28,13 @@ android {
 
 dependencies {
     implementation project(":signature-pad")
-    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+
+    // Kotlin 1.8+ merged the jdk7/jdk8 stdlib classes into kotlin-stdlib.
+    // These constraints align the (transitively-pulled) legacy jdk7/jdk8
+    // artifacts to the main stdlib version, avoiding "Duplicate class" errors.
+    constraints {
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22')
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22')
+    }
 }
