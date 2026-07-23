@@ -22,6 +22,17 @@ android {
     buildFeatures {
         dataBinding true
     }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.16.1'
 }
 
 // Publishing to Maven Central via the Sonatype Central Portal.
