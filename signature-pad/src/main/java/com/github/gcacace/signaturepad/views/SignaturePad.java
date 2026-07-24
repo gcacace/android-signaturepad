@@ -460,6 +460,11 @@ public class SignaturePad extends View {
     }
 
     public void setSignatureBitmap(final Bitmap signature) {
+        if (signature == null) {
+            clear();
+            return;
+        }
+
         // View was laid out...
         if (ViewCompat.isLaidOut(this)) {
             // Capture any SVG paths staged by onRestoreInstanceState BEFORE clearView()
