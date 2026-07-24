@@ -810,11 +810,22 @@ public class SignaturePadTest {
         return false;
     }
 
-    /** True if any fully-opaque pixel in the bitmap matches the given color. */
+    /** True if any non-transparent pixel in the bitmap approximately matches the given color. */
     private static boolean hasPixelOfColor(Bitmap bitmap, int color) {
+        final int expectedR = Color.red(color);
+        final int expectedG = Color.green(color);
+        final int expectedB = Color.blue(color);
+        final int maxDelta = 10; // tolerate anti-aliasing / blending
+
         for (int x = 0; x < bitmap.getWidth(); x++) {
             for (int y = 0; y < bitmap.getHeight(); y++) {
-                if (bitmap.getPixel(x, y) == color) {
+                int pixel = bitmap.getPixel(x, y);
+                if (Color.alpha(pixel) == 0) {
+                    continue;
+                }
+                if (Math.abs(Color.red(pixel) - expectedR) <= maxDelta
+                        && Math.abs(Color.green(pixel) - expectedG) <= maxDelta
+                        && Math.abs(Color.blue(pixel) - expectedB) <= maxDelta) {
                     return true;
                 }
             }
