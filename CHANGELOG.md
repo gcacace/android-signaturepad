@@ -10,8 +10,15 @@ _Nothing yet._
 
 ## [1.4.0]
 
-Backward-compatible hotfix release. No public API changes — drop-in for existing
-consumers of `com.github.gcacace:signature-pad`.
+Crash-fix and modernization release. The Java/XML public API is unchanged, so it is
+a drop-in update for existing consumers **on minSdk 21+** (see Breaking changes).
+
+### Breaking changes
+- **`minSdk` raised from 14 to 21.** The library targets AndroidX and the modern
+  Android Gradle Plugin, whose practical baseline is API 21 (Lollipop). API 14–20 is
+  effectively zero active-device share and unsupported by current tooling. Consumers
+  still on `minSdk < 21` cannot upgrade to this release. No source/binary API
+  signatures changed.
 
 ### Fixed
 - **Background/rotation crash `Could not copy bitmap to parcel blob`**
