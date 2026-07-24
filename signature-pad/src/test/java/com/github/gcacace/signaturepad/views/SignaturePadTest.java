@@ -458,8 +458,7 @@ public class SignaturePadTest {
     public void getTransparentSignatureBitmap_afterSingleDot_returnsTrimmedInk() {
         // End-to-end: a single tap renders a dot (#41), so trimming finds ink and
         // returns a non-null cropped bitmap rather than the null it returns for a
-        // truly blank pad. (The zero-dimension clamp itself is gated by
-        // getTransparentSignatureBitmap_afterHorizontalStroke_clampsZeroHeight.)
+        // truly blank pad.
         layout();
         dispatchTouch(pad, 100f, 100f);
         Bitmap trimmed = pad.getTransparentSignatureBitmap(true);
@@ -467,14 +466,11 @@ public class SignaturePadTest {
     }
 
     @Test
-    public void getTransparentSignatureBitmap_afterHorizontalStroke_clampsZeroHeight() {
-        // GATES the trim-crop clamp (the single-dot test rasterizes a multi-pixel
-        // blob, so its bounds are already > 1px and the clamp is a no-op there). A
-        // dead-straight horizontal line exactly one row tall trims to zero height
-        // (yMax == yMin); the crop must clamp to >= 1px instead of throwing (#145).
+    public void getTransparentSignatureBitmap_singleInkedRow_trimsToOnePxTall() {
+        // A dead-straight horizontal line exactly one row tall: yMin == yMax, so the
+        // INCLUSIVE height is (yMax - yMin + 1) == 1 — the single inked row is kept,
+        // not dropped to zero. (Also exercises the >=1 safety clamp for #145.)
         layout();
-        // Ink a single full-width row on the (blank) backing bitmap so the trim
-        // bounds collapse to zero height.
         Bitmap canvasBitmap = pad.getTransparentSignatureBitmap();
         for (int x = 0; x < canvasBitmap.getWidth(); x++) {
             canvasBitmap.setPixel(x, 0, Color.BLACK);
@@ -485,6 +481,27 @@ public class SignaturePadTest {
         assertNotNull(trimmed);
         assertEquals("a single inked row trims to exactly 1px height", 1, trimmed.getHeight());
         assertTrue(trimmed.getWidth() >= 1);
+    }
+
+    @Test
+    public void getTransparentSignatureBitmap_keepsLastInkedRowAndColumn() {
+        // GATES the inclusive-bounds fix (#64): a filled block spanning rows/cols
+        // [10..12] (3px each way) must trim to exactly 3x3. The previous
+        // `xMax - xMin` / `yMax - yMin` math dropped the last row+column, yielding
+        // 2x2 and clipping a pixel line. This test fails under that off-by-one.
+        layout();
+        Bitmap canvasBitmap = pad.getTransparentSignatureBitmap();
+        for (int x = 10; x <= 12; x++) {
+            for (int y = 10; y <= 12; y++) {
+                canvasBitmap.setPixel(x, y, Color.BLACK);
+            }
+        }
+
+        Bitmap trimmed = pad.getTransparentSignatureBitmap(true);
+
+        assertNotNull(trimmed);
+        assertEquals("inclusive width must keep the last inked column", 3, trimmed.getWidth());
+        assertEquals("inclusive height must keep the last inked row", 3, trimmed.getHeight());
     }
 
     // --- #41: single tap renders a dot --------------------------------------

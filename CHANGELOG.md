@@ -26,6 +26,10 @@ consumers of `com.github.gcacace:signature-pad`.
   `Bitmap.createBitmap` dimensions are now clamped to at least 1px.
 - **Single taps did not render a dot** (#41). A tap produces a zero-length curve,
   which drew nothing; a single dot is now painted for degenerate curves.
+- **`getTransparentSignatureBitmap(true)` cropped one row/column of ink** (#64).
+  The trim used exclusive bounds (`xMax - xMin`) even though `xMax`/`yMax` are the
+  inclusive last-ink indices; it now uses `xMax - xMin + 1` so the final row/column
+  is kept.
 - **`getSignatureSvg()` returned an empty SVG after a rotation / configuration
   change.** The signature was restored from a PNG bitmap, which repaints the ink
   but leaves the SVG path builder empty. The SVG paths are now persisted alongside

@@ -584,11 +584,16 @@ public class SignaturePad extends View {
                 break;
         }
 
-        // Clamp to at least 1px: a single dot or a perfectly straight
-        // horizontal/vertical stroke yields zero-width or zero-height bounds,
-        // which would make Bitmap.createBitmap throw (#145).
-        int trimmedWidth = Math.max(xMax - xMin, 1);
-        int trimmedHeight = Math.max(yMax - yMin, 1);
+        // xMax/yMax are the INCLUSIVE indices of the last inked pixel, so the
+        // content size is (xMax - xMin + 1) x (yMax - yMin + 1). Using the +1 keeps
+        // the final row/column of ink (fixes #64, which dropped one pixel line) and
+        // makes a single dot/line a 1px extent rather than 0. The Math.max(..., 1)
+        // stays as a defensive safety net for Bitmap.createBitmap (#145); it is
+        // never triggered here since xMax >= xMin and yMax >= yMin whenever a pixel
+        // was found. The +1 is in bounds: xMin + (xMax - xMin + 1) == xMax + 1 <=
+        // imgWidth (same for height).
+        int trimmedWidth = Math.max(xMax - xMin + 1, 1);
+        int trimmedHeight = Math.max(yMax - yMin + 1, 1);
         return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, trimmedWidth, trimmedHeight);
     }
 
