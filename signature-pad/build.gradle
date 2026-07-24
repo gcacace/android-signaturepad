@@ -99,9 +99,11 @@ tasks.register('jacocoTestReport', JacocoReport) {
             '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*',
             '**/*Test*.*', 'android/**/*.*',
             // Generated data-binding glue — not hand-written code, so exclude it
-            // so the percentage reflects the library's own source.
+            // so the percentage reflects the library's own source. Note:
+            // SignaturePadBindingAdapter is NOT excluded — it is hand-written
+            // public @BindingAdapter API and is covered by its own test.
             '**/databinding/**', '**/BR.*', '**/DataBinderMapperImpl*.*',
-            '**/DataBindingTriggerClass.*', '**/*BindingAdapter*.*'
+            '**/DataBindingTriggerClass.*'
     ]
     def javaClasses = fileTree(dir: "${buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes", excludes: excludes)
     classDirectories.setFrom(files([javaClasses]))
