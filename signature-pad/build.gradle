@@ -43,9 +43,9 @@ dependencies {
 //
 // Coordinates ARE set explicitly so we keep shipping under the exact artifact
 // consumers already depend on: `com.github.gcacace:signature-pad`.
-// (Do NOT let the plugin derive the artifact id from POM_ARTIFACT_ID — that
-//  value is `android-signaturepad`, which was never the published id and would
-//  silently break every existing integration.)
+// (Even though POM_ARTIFACT_ID is also set to `signature-pad`, keep coordinates
+// pinned explicitly so accidental changes to gradle.properties can't break
+// existing integrations.)
 mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
