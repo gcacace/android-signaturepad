@@ -31,8 +31,17 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Unit tests (library)
-        run: ./gradlew :signature-pad:testDebugUnitTest --stacktrace
+      - name: Unit tests + coverage (library)
+        run: ./gradlew :signature-pad:jacocoTestReport --stacktrace
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: signature-pad/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          flags: unittests
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Android Lint (library)
         run: ./gradlew :signature-pad:lintRelease --stacktrace
