@@ -583,6 +583,128 @@ public class SignaturePadTest {
         assertTrue("a tap at the origin must still render a dot (#41)", hasInk(bitmap));
     }
 
+    // --- #147: setClearOnDoubleClick setter ---------------------------------
+
+    @Test
+    public void setClearOnDoubleClick_togglesTheFlag() {
+        // The flag was previously only settable via the XML attribute at
+        // construction; the runtime setter must flip it both ways.
+        assertFalse("default is off", pad.isClearOnDoubleClick());
+
+        pad.setClearOnDoubleClick(true);
+        assertTrue("setter enables the flag", pad.isClearOnDoubleClick());
+
+        pad.setClearOnDoubleClick(false);
+        assertFalse("setter disables the flag", pad.isClearOnDoubleClick());
+    }
+
+    @Test
+    public void setClearOnDoubleClick_enabled_doubleTapClearsSignature() {
+        // End-to-end: with the flag set at runtime, a double tap must clear the pad.
+        layout();
+        drawStroke(pad);
+        assertFalse("precondition: pad has content", pad.isEmpty());
+
+        pad.setClearOnDoubleClick(true);
+        doubleTap(pad, 50f, 50f);
+
+        assertTrue("a double tap clears the pad once the runtime flag is on",
+                pad.isEmpty());
+    }
+
+    @Test
+    public void doubleTap_whenDisabled_keepsSignature() {
+        // Guards against the setter being ignored / inverted: with the flag off
+        // (the default) a double tap must NOT clear the drawn signature.
+        layout();
+        drawStroke(pad);
+
+        pad.setClearOnDoubleClick(false);
+        doubleTap(pad, 50f, 50f);
+
+        assertFalse("a double tap must not clear when the flag is off",
+                pad.isEmpty());
+    }
+
+    @Test
+    public void doubleTapClear_afterRestore_isNotUndoneByNextRotation() {
+        // Regression for the state bug flagged on PR #192: a double-tap clear must
+        // set mHasEditState (via clear(), not clearView()). Otherwise, after a
+        // restore (mHasEditState=false, mBitmapSavedState still holding the drawn
+        // signature) the next onSaveInstanceState() skips refreshing
+        // mBitmapSavedState and re-persists the STALE pre-clear signature, so the
+        // cleared signature reappears on the following rotation.
+        //
+        // Sequence: draw -> rotate(save/restore) -> double-tap clear ->
+        //           rotate(save/restore) -> must still be empty.
+        layout();
+        drawStroke(pad);
+
+        // Rotation 1: save and restore into a fresh laid-out pad.
+        Parcelable afterDraw = pad.onSaveInstanceState();
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
+        restored.onRestoreInstanceState(afterDraw);
+        assertFalse("precondition: signature restored after first rotation",
+                restored.isEmpty());
+
+        // Double-tap clear on the restored pad.
+        restored.setClearOnDoubleClick(true);
+        doubleTap(restored, 50f, 50f);
+        assertTrue("double tap clears the restored pad", restored.isEmpty());
+
+        // Rotation 2: save the cleared pad and restore again.
+        Parcelable afterClear = restored.onSaveInstanceState();
+        SignaturePad restored2 = newPad();
+        layout(restored2, 400, 300);
+        restored2.onRestoreInstanceState(afterClear);
+
+        assertTrue("a double-tap clear must survive the next rotation, "
+                + "not resurrect the pre-clear signature", restored2.isEmpty());
+    }
+
+    // --- #94: setSignatureBitmap(null) clears instead of crashing ------------
+
+    @Test
+    public void setSignatureBitmap_null_clearsPadWithoutThrowing() {
+        // Passing null used to NPE (clearView() -> signature.getWidth()). It must
+        // now clear the pad gracefully. Gates the null guard: without it, the
+        // laid-out branch dereferences the null bitmap and throws.
+        layout();
+        drawStroke(pad);
+        assertFalse("precondition: pad has content", pad.isEmpty());
+
+        pad.setSignatureBitmap(null);
+
+        assertTrue("setSignatureBitmap(null) clears the pad", pad.isEmpty());
+    }
+
+    @Test
+    public void setSignatureBitmap_null_beforeLayout_doesNotThrow() {
+        // The not-laid-out branch also dereferenced the bitmap (deferred via the
+        // layout listener). The guard runs before the isLaidOut() check, so a null
+        // passed on a 0x0 view is handled without throwing too.
+        assertEquals(0, pad.getWidth());
+        pad.setSignatureBitmap(null);
+        assertTrue("a null bitmap on an un-laid-out pad leaves it empty",
+                pad.isEmpty());
+    }
+
+    /**
+     * Dispatch a double tap so the GestureDetector fires onDoubleTap(). The
+     * second tap's down-time must fall within [DOUBLE_TAP_MIN_TIME (40ms),
+     * DOUBLE_TAP_TIMEOUT (300ms)] after the first tap's up-time, so the event
+     * times are spaced explicitly rather than read from the (frozen) test clock.
+     */
+    private void doubleTap(SignaturePad target, float x, float y) {
+        long t = SystemClock.uptimeMillis();
+        dispatch(target, t, t, MotionEvent.ACTION_DOWN, x, y);
+        dispatch(target, t, t + 10, MotionEvent.ACTION_UP, x, y);
+        long t2 = t + 110; // 100ms after the first up: inside the double-tap window
+        dispatch(target, t2, t2, MotionEvent.ACTION_DOWN, x, y);
+        dispatch(target, t2, t2 + 10, MotionEvent.ACTION_UP, x, y);
+    }
+
     /** True if any pixel in the bitmap is non-transparent. */
     private static boolean hasInk(Bitmap bitmap) {
         for (int x = 0; x < bitmap.getWidth(); x++) {
