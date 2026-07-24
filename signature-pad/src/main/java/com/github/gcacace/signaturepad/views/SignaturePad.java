@@ -1,9 +1,11 @@
 package com.github.gcacace.signaturepad.views;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -26,11 +28,40 @@ import com.github.gcacace.signaturepad.utils.TimedPoint;
 import com.github.gcacace.signaturepad.view.ViewCompat;
 import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SignaturePad extends View {
     private static final String TAG = SignaturePad.class.getName();
+
+    /**
+     * Upper bound (in bytes) on the PNG-compressed signature stored in the
+     * saved-state {@link Bundle}. Android hands the whole Bundle to the system
+     * over a Binder transaction whose buffer is ~1 MB, shared with everything
+     * else being saved. If the compressed signature exceeds this cap we persist
+     * nothing rather than risk a {@code TransactionTooLargeException}; the pad
+     * simply comes up empty after the config change and the user re-signs.
+     * Adjustable — a typical signature is only a few KB.
+     */
+    private static final int MAX_SAVED_STATE_BYTES = 256 * 1024;
+
+    /**
+     * Effective cap used by {@link #onSaveInstanceState()}. Defaults to
+     * {@link #MAX_SAVED_STATE_BYTES}; package-private (not public API) so tests
+     * can force the over-cap drop path deterministically without allocating a
+     * multi-megabyte bitmap.
+     */
+    int mMaxSavedStateBytes = MAX_SAVED_STATE_BYTES;
+
+    /**
+     * Independent cap for the persisted SVG string; see {@link #mMaxSavedStateBytes}.
+     * Same default value, evaluated separately so an over-cap SVG is dropped on its
+     * own without dropping the (already-persisted) PNG. Package-private so tests can
+     * force the drop path deterministically.
+     */
+    int mMaxSavedStateBytesSvg = MAX_SAVED_STATE_BYTES;
 
     //View state
     private List<TimedPoint> mPoints;
@@ -42,6 +73,14 @@ public class SignaturePad extends View {
     private float mLastWidth;
     private RectF mDirtyRect;
     private Bitmap mBitmapSavedState;
+
+    // SVG state staged during onRestoreInstanceState, re-injected into mSvgBuilder
+    // after setSignatureBitmap()'s clearView() wipes it (see onRestoreInstanceState
+    // / setSignatureBitmap). mRestoredSvgWidth/Height are the ORIGINAL view size the
+    // paths were captured in, used for a self-consistent viewBox in getSignatureSvg().
+    private String mRestoredSvgPaths;
+    private int mRestoredSvgWidth;
+    private int mRestoredSvgHeight;
 
     private final SvgBuilder mSvgBuilder = new SvgBuilder();
 
@@ -109,15 +148,86 @@ public class SignaturePad extends View {
         });
     }
 
+    // Bitmap.compress is @WorkerThread, but onSaveInstanceState must run
+    // synchronously on the UI thread by framework contract, so the compression
+    // cannot be moved off-thread here. The payload is a single already-rendered
+    // signature bitmap (same UI-thread cost the previous implementation already
+    // paid in getTransparentSignatureBitmap), so this is safe in practice.
+    @SuppressLint("WrongThread")
     @Override
     protected Parcelable onSaveInstanceState() {
         try {
             Bundle bundle = new Bundle();
             bundle.putParcelable("superState", super.onSaveInstanceState());
-            if (this.mHasEditState == null || this.mHasEditState) {
-                this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+            // Persist when there is a signature worth keeping: either live content
+            // (!mIsEmpty) OR a restored-but-not-yet-replayed signature. After
+            // onRestoreInstanceState decodes into a not-yet-laid-out pad,
+            // mBitmapSavedState holds the signature while mIsEmpty is still true
+            // (setSignatureBitmap defers setIsEmpty(false) to layout); gating on
+            // mIsEmpty alone would drop it on a second save before layout — a
+            // regression vs 1.3.1. A fresh, untouched pad matches neither term and
+            // stores nothing, so it correctly restores empty. When the pad has been
+            // cleared via clear(), mHasEditState is true, so the re-render below
+            // refreshes mBitmapSavedState to the current (blank) bitmap — this
+            // preserves 1.3.1's post-clear save behavior exactly.
+            if (!this.mIsEmpty || this.mBitmapSavedState != null) {
+                if (this.mHasEditState == null || this.mHasEditState) {
+                    this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+                }
+                // Persist a PNG-compressed copy rather than the raw Bitmap. A raw
+                // Bitmap in the Bundle is copied to a native parcel blob during the
+                // framework's activityStopped() Binder transaction, which throws
+                // "Could not copy bitmap to parcel blob" / TransactionTooLargeException
+                // on large signatures (#178/#169/#183/#187). A byte[] never takes that
+                // path, and the size cap keeps the payload well under the Binder budget.
+                if (this.mBitmapSavedState != null) {
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    this.mBitmapSavedState.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    if (stream.size() <= mMaxSavedStateBytes) {
+                        bundle.putByteArray("signaturePng", stream.toByteArray());
+                        // Also persist the vector paths so getSignatureSvg() survives
+                        // the config change: the PNG restore repaints raster ink but
+                        // leaves mSvgBuilder empty. Nested here so SVG is only stored
+                        // when the PNG is ("SVG present implies PNG present"), and
+                        // capped independently so an oversized SVG is dropped on its
+                        // own without affecting the raster restore. The paths are in
+                        // the CURRENT view coordinate space; the dimensions give the
+                        // restored SVG a self-consistent viewBox.
+                        String svgPaths = mSvgBuilder.getInnerPaths();
+                        if (svgPaths != null && !svgPaths.isEmpty()) {
+                            // Measure the actual UTF-8 byte length so the comparison
+                            // matches the byte-defined cap even if the SVG ever carries
+                            // non-ASCII content.
+                            int svgBytes = svgPaths.getBytes(StandardCharsets.UTF_8).length;
+                            if (svgBytes <= mMaxSavedStateBytesSvg) {
+                                bundle.putString("signatureSvgPaths", svgPaths);
+                                // The dimensions identify the coordinate space the paths
+                                // are in. If the paths were themselves restored from a
+                                // previous save (mRestoredSvg* armed), they are still in
+                                // the ORIGINAL space, so persist the original dimensions —
+                                // NOT the current (possibly re-rotated) view size — so the
+                                // viewBox stays consistent across multiple rotations.
+                                int svgWidth = (mRestoredSvgWidth > 0) ? mRestoredSvgWidth : getWidth();
+                                int svgHeight = (mRestoredSvgHeight > 0) ? mRestoredSvgHeight : getHeight();
+                                bundle.putInt("signatureSvgWidth", svgWidth);
+                                bundle.putInt("signatureSvgHeight", svgHeight);
+                            } else {
+                                Log.w(TAG, String.format(
+                                        "signature SVG too large to save (%d bytes > %d cap); "
+                                                + "getSignatureSvg() will be empty after the config change",
+                                        svgBytes, mMaxSavedStateBytesSvg));
+                            }
+                        }
+                    } else {
+                        // Too large to persist safely; drop it. The pad restores empty
+                        // and the user re-signs — strictly better than crashing.
+                        Log.w(TAG, String.format(
+                                "signature too large to save (%d bytes > %d cap); "
+                                        + "it will not be restored after the config change",
+                                stream.size(), mMaxSavedStateBytes));
+                    }
+                }
             }
-            bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
             return bundle;
         } catch(Exception e) {
             Log.w(TAG, String.format("error saving instance state: %s", e.getMessage()));
@@ -129,8 +239,24 @@ public class SignaturePad extends View {
     protected void onRestoreInstanceState(Parcelable state) {
         if (state instanceof Bundle) {
             Bundle bundle = (Bundle) state;
-            this.setSignatureBitmap((Bitmap) bundle.getParcelable("signatureBitmap"));
-            this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
+            byte[] png = bundle.getByteArray("signaturePng");
+            if (png != null) {
+                Bitmap signature = BitmapFactory.decodeByteArray(png, 0, png.length);
+                if (signature != null) {
+                    // Stage the restored SVG BEFORE setSignatureBitmap() -> clearView()
+                    // wipes mSvgBuilder. Re-injection happens in setSignatureBitmap()'s
+                    // laid-out branch, which both the laid-out and the deferred
+                    // (OnGlobalLayoutListener) restore paths funnel through, so it is
+                    // guaranteed to run AFTER clearView().
+                    this.mRestoredSvgPaths = bundle.getString("signatureSvgPaths");
+                    this.mRestoredSvgWidth = bundle.getInt("signatureSvgWidth", 0);
+                    this.mRestoredSvgHeight = bundle.getInt("signatureSvgHeight", 0);
+                    this.mBitmapSavedState = signature;
+                    this.setSignatureBitmap(signature);
+                }
+            }
+            // No saved signature (empty pad, or dropped for exceeding the size
+            // cap) => leave the pad empty; nothing to restore.
             state = bundle.getParcelable("superState");
         }
         this.mHasEditState = false;
@@ -191,6 +317,11 @@ public class SignaturePad extends View {
 
     public void clearView() {
         mSvgBuilder.clear();
+        // Drop any staged/active restored-SVG state so clear(), a double-tap clear,
+        // or a fresh setSignatureBitmap() don't resurrect stale paths or dimensions.
+        mRestoredSvgPaths = null;
+        mRestoredSvgWidth = 0;
+        mRestoredSvgHeight = 0;
         mPoints = new ArrayList<>();
         mLastVelocity = 0;
         mLastWidth = (mMinWidth + mMaxWidth) / 2f;
@@ -269,9 +400,31 @@ public class SignaturePad extends View {
         return mIsEmpty;
     }
 
+    /**
+     * Returns the signature as an SVG document.
+     *
+     * <p>After a configuration change (e.g. rotation) the signature is restored
+     * from saved state and the SVG paths are re-injected in the ORIGINAL view
+     * coordinate space, so the returned document uses the original width/height as
+     * its {@code viewBox} and renders as it was drawn.
+     *
+     * <p><b>Caveat:</b> if the user draws additional strokes after such a restore,
+     * those new strokes are captured in the CURRENT (post-rotation) view space and
+     * are therefore geometrically inconsistent with the restored paths in the same
+     * document. The visible bitmap remains correct; only the mixed SVG is affected.
+     */
     public String getSignatureSvg() {
-        int width = getTransparentSignatureBitmap().getWidth();
-        int height = getTransparentSignatureBitmap().getHeight();
+        // Call once — getTransparentSignatureBitmap() lazily allocates the backing
+        // bitmap, so reuse the result rather than invoking it per dimension.
+        Bitmap bitmap = getTransparentSignatureBitmap();
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        // When paths were restored from saved state they are in the original view
+        // space; pair them with the original dimensions for a self-consistent viewBox.
+        if (mRestoredSvgWidth > 0 && mRestoredSvgHeight > 0) {
+            width = mRestoredSvgWidth;
+            height = mRestoredSvgHeight;
+        }
         return mSvgBuilder.build(width, height);
     }
 
@@ -287,6 +440,14 @@ public class SignaturePad extends View {
     public void setSignatureBitmap(final Bitmap signature) {
         // View was laid out...
         if (ViewCompat.isLaidOut(this)) {
+            // Capture any SVG paths staged by onRestoreInstanceState BEFORE clearView()
+            // resets the mRestoredSvg* fields, so they can be re-injected afterwards.
+            // For ordinary external callers these are null/0 (nothing was staged), so
+            // the re-injection below is a no-op and behavior is unchanged.
+            final String pendingSvgPaths = mRestoredSvgPaths;
+            final int pendingSvgWidth = mRestoredSvgWidth;
+            final int pendingSvgHeight = mRestoredSvgHeight;
+
             clearView();
             ensureSignatureBitmap();
 
@@ -308,6 +469,18 @@ public class SignaturePad extends View {
             Canvas canvas = new Canvas(mSignatureBitmap);
             canvas.drawBitmap(signature, drawMatrix, null);
             setIsEmpty(false);
+
+            // Re-inject SVG paths staged by onRestoreInstanceState AFTER clearView()
+            // has wiped mSvgBuilder, so getSignatureSvg() returns the signature again.
+            // No-op for ordinary callers (pendingSvgPaths == null).
+            if (pendingSvgPaths != null) {
+                mSvgBuilder.restorePaths(pendingSvgPaths);
+                // Re-arm the original dimensions (cleared by clearView) so
+                // getSignatureSvg() pairs the restored, original-space paths with a
+                // self-consistent viewBox.
+                mRestoredSvgWidth = pendingSvgWidth;
+                mRestoredSvgHeight = pendingSvgHeight;
+            }
             invalidate();
         }
         // View not laid out yet e.g. called from onCreate(), onRestoreInstanceState()...
@@ -411,7 +584,17 @@ public class SignaturePad extends View {
                 break;
         }
 
-        return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
+        // xMax/yMax are the INCLUSIVE indices of the last inked pixel, so the
+        // content size is (xMax - xMin + 1) x (yMax - yMin + 1). Using the +1 keeps
+        // the final row/column of ink (fixes #64, which dropped one pixel line) and
+        // makes a single dot/line a 1px extent rather than 0. The Math.max(..., 1)
+        // stays as a defensive safety net for Bitmap.createBitmap (#145); it is
+        // never triggered here since xMax >= xMin and yMax >= yMin whenever a pixel
+        // was found. The +1 is in bounds: xMin + (xMax - xMin + 1) == xMax + 1 <=
+        // imgWidth (same for height).
+        int trimmedWidth = Math.max(xMax - xMin + 1, 1);
+        int trimmedHeight = Math.max(yMax - yMin + 1, 1);
+        return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, trimmedWidth, trimmedHeight);
     }
 
     private boolean onDoubleClick() {
@@ -500,6 +683,18 @@ public class SignaturePad extends View {
         float originalWidth = mPaint.getStrokeWidth();
         float widthDelta = endWidth - startWidth;
         float drawSteps = (float) Math.ceil(curve.length());
+
+        if (drawSteps == 0) {
+            // A zero-length curve (e.g. a single tap / dot) would otherwise draw
+            // nothing, because the loop below never runs. Render a single dot so
+            // the tap is visible (#41). The ROUND stroke cap makes drawPoint paint
+            // a filled circle; use the average width to match the SVG output above.
+            mPaint.setStrokeWidth((startWidth + endWidth) / 2);
+            mSignatureBitmapCanvas.drawPoint(curve.startPoint.x, curve.startPoint.y, mPaint);
+            expandDirtyRect(curve.startPoint.x, curve.startPoint.y);
+            mPaint.setStrokeWidth(originalWidth);
+            return;
+        }
 
         for (int i = 0; i < drawSteps; i++) {
             // Calculate the Bezier (x, y) coordinate for this step.
@@ -608,7 +803,11 @@ public class SignaturePad extends View {
 
     private void ensureSignatureBitmap() {
         if (mSignatureBitmap == null) {
-            mSignatureBitmap = Bitmap.createBitmap(getWidth(), getHeight(),
+            // Clamp to at least 1px. The view can be asked to produce its bitmap
+            // (e.g. from onSaveInstanceState) before it has been laid out, when
+            // getWidth()/getHeight() are still 0 — Bitmap.createBitmap then throws
+            // "width and height must be > 0" (#145).
+            mSignatureBitmap = Bitmap.createBitmap(Math.max(getWidth(), 1), Math.max(getHeight(), 1),
                     Bitmap.Config.ARGB_8888);
             mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
         }

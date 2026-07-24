@@ -75,15 +75,12 @@ public class SvgBuilderTest {
     }
 
     @Test
-    public void build_calledTwice_characterizesCurrentBehavior() {
-        // CHARACTERIZATION TEST — documents CURRENT (buggy) behavior, not desired.
-        //
-        // BUG (Phase 2/3 candidate): SvgBuilder.build() flushes the in-progress
-        // path via appendCurrentPath() but never resets mCurrentPathBuilder.
-        // Calling build() a second time therefore appends the last path AGAIN,
-        // duplicating a stroke in the output. A caller that reads the SVG twice
-        // (e.g. logging then saving) would get different documents. This test
-        // pins the duplication so a future fix will fail it intentionally.
+    public void build_calledTwice_isIdempotent() {
+        // Previously build() flushed the in-progress path via appendCurrentPath()
+        // but never reset mCurrentPathBuilder, so a second build() duplicated the
+        // last path. appendCurrentPath() now nulls the builder, making build()
+        // idempotent — required because getSignatureSvg()/getInnerPaths() may be
+        // read more than once (e.g. logging then persisting).
         builder.append(curve(0, 0, 10, 10, 20, 20, 30, 30), 5f);
 
         String first = builder.build(100, 100);
@@ -92,6 +89,55 @@ public class SvgBuilderTest {
         int firstPathCount = first.split("<path ", -1).length - 1;
         int secondPathCount = second.split("<path ", -1).length - 1;
         assertEquals("first build() emits one path", 1, firstPathCount);
-        assertEquals("second build() currently DUPLICATES the path (bug)", 2, secondPathCount);
+        assertEquals("second build() must not duplicate the path", 1, secondPathCount);
+        assertEquals("repeated build() must return identical output", first, second);
+    }
+
+    @Test
+    public void getInnerPaths_flushesInProgressPath_andIsIdempotent() {
+        builder.append(curve(0, 0, 10, 10, 20, 20, 30, 30), 5f);
+
+        String first = builder.getInnerPaths();
+        String second = builder.getInnerPaths();
+
+        assertTrue("inner paths should contain the flushed <path>", first.contains("<path "));
+        assertFalse("inner paths must NOT include the <svg> document wrapper", first.contains("<svg"));
+        assertEquals("repeated getInnerPaths() must be idempotent", first, second);
+        assertEquals("exactly one <path> fragment", 1, first.split("<path ", -1).length - 1);
+    }
+
+    @Test
+    public void restorePaths_thenBuild_emitsRestoredPaths() {
+        builder.append(curve(0, 0, 10, 10, 20, 20, 30, 30), 5f);
+        String exported = builder.getInnerPaths();
+
+        SvgBuilder restored = new SvgBuilder();
+        restored.restorePaths(exported);
+        String svg = restored.build(100, 100);
+
+        assertTrue("restored builder should emit the path", svg.contains("<path "));
+        assertTrue("restored SVG should embed the exported fragment verbatim", svg.contains(exported));
+    }
+
+    @Test
+    public void restorePaths_thenAppend_keepsRestoredAndAddsNew() {
+        // Locks the "keep restored SVG and append new strokes" behavior.
+        builder.append(curve(0, 0, 10, 10, 20, 20, 30, 30), 5f);
+        String exported = builder.getInnerPaths();
+
+        SvgBuilder restored = new SvgBuilder();
+        restored.restorePaths(exported);
+        restored.append(curve(50, 50, 60, 60, 70, 70, 80, 80), 3f);
+        String svg = restored.build(100, 100);
+
+        assertEquals("restored path plus one appended path", 2, svg.split("<path ", -1).length - 1);
+    }
+
+    @Test
+    public void restorePaths_null_isNoOp() {
+        builder.restorePaths(null);
+        String svg = builder.build(100, 100);
+
+        assertFalse("restoring null should add no path", svg.contains("<path "));
     }
 }
