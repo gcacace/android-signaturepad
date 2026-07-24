@@ -68,6 +68,21 @@ jacoco {
     toolVersion = '0.8.12'
 }
 
+tasks.withType(Test).configureEach {
+    jacoco {
+        // Robolectric loads classes-under-test through its own instrumenting
+        // sandbox classloader; those re-instrumented classes carry no source
+        // location, and JaCoCo drops "no-location classes" by default. Without
+        // this flag SignaturePad reported 0% coverage despite being exercised by
+        // 35 Robolectric tests (the util classes were counted only because their
+        // plain-JUnit tests load through the system classloader). Keep them.
+        includeNoLocationClasses = true
+        // Mandatory on JDK 11+: the coverage agent otherwise chokes on the
+        // bootstrap 'jdk.internal.*' classes ("bogus class" / bad class format).
+        excludes = ['jdk.internal.*']
+    }
+}
+
 tasks.register('jacocoTestReport', JacocoReport) {
     dependsOn 'testDebugUnitTest'
     group = 'verification'
