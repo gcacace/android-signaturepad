@@ -371,11 +371,19 @@ public class SignaturePad extends View {
         float eventX = event.getX();
         float eventY = event.getY();
 
+        // Feed the FULL event stream to the GestureDetector. Double-tap detection
+        // compares the current ACTION_DOWN against the previous ACTION_UP, so the
+        // detector must see the UP events too — forwarding only ACTION_DOWN (as
+        // before) left mPreviousUpEvent null, so onDoubleTap() never fired and
+        // clearOnDoubleClick was dead (#66). A consumed event (double tap -> clear)
+        // short-circuits the ACTION_DOWN drawing path below.
+        boolean consumedByGesture = mGestureDetector.onTouchEvent(event);
+
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
                 mPoints.clear();
-                if (mGestureDetector.onTouchEvent(event)) break;
+                if (consumedByGesture) break;
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 addPoint(getNewPoint(eventX, eventY));
@@ -632,8 +640,21 @@ public class SignaturePad extends View {
         return false;
     }
 
+    /**
+     * Enables or disables clearing the pad when it is double-tapped. This mirrors
+     * the {@code clearOnDoubleClick} XML attribute so it can be toggled at runtime.
+     *
+     * @param clearOnDoubleClick {@code true} to clear the pad on a double tap.
+     */
     public void setClearOnDoubleClick(boolean clearOnDoubleClick) {
         mClearOnDoubleClick = clearOnDoubleClick;
+    }
+
+    /**
+     * @return {@code true} if a double tap clears the pad.
+     */
+    public boolean isClearOnDoubleClick() {
+        return mClearOnDoubleClick;
     }
 
     private TimedPoint getNewPoint(float x, float y) {
