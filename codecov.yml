@@ -1,0 +1,35 @@
+# Codecov configuration for android-signaturepad.
+#
+# Coverage is produced by :signature-pad:jacocoTestReport (JaCoCo 0.8.12) and
+# uploaded from CI (see .github/workflows/ci.yml) under the `unittests` flag.
+#
+# Targets are set from the MEASURED coverage (~96% instruction / ~95% line at the
+# time of writing) with margin, so the gate is green today but blocks real
+# regressions. Raise these if coverage climbs; do not set a target you can't meet.
+coverage:
+  precision: 1
+  round: down
+  range: "70...90"
+  status:
+    project:
+      default:
+        target: 90%          # repo-wide floor; well below the measured ~95%
+        threshold: 2%        # tolerate minor fluctuation before failing
+        informational: false # ENFORCING: a drop below (target - threshold) fails the check
+        flags:
+          - unittests
+    patch:
+      default:
+        target: 80%          # new/changed lines held to a solid bar
+        threshold: 5%
+        informational: false
+
+comment:
+  layout: "reason, diff, files"
+  require_changes: false
+
+# Match the CI upload flag so status checks attach to the right report.
+flags:
+  unittests:
+    paths:
+      - signature-pad/src/main/java
