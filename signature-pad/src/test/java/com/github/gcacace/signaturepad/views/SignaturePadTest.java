@@ -386,6 +386,60 @@ public class SignaturePadTest {
     }
 
     @Test
+    public void restoredPad_resavedBeforeLayout_stillPersistsSvgPaths() {
+        // Regression guard (PR #190): after a restore into a not-yet-laid-out pad,
+        // mSvgBuilder is still empty (re-injection is deferred to layout) while the
+        // staged mRestoredSvgPaths holds the signature. A second save before layout
+        // must persist the SVG from the staged paths, not drop it.
+        layout();
+        drawStroke(pad);
+        Parcelable first = pad.onSaveInstanceState();
+        assertNotNull("precondition: first save has SVG paths",
+                ((Bundle) first).getString("signatureSvgPaths"));
+
+        // Restore into a pad that is NOT laid out yet, then save again immediately.
+        SignaturePad restored = newPad();
+        restored.onRestoreInstanceState(first);
+        Parcelable second = restored.onSaveInstanceState();
+
+        assertNotNull("SVG paths must survive a re-save before layout",
+                ((Bundle) second).getString("signatureSvgPaths"));
+
+        // And they must still restore into a real pad as a populated SVG.
+        SignaturePad restored2 = newPad();
+        layout(restored2, 400, 300);
+        restored2.onRestoreInstanceState(second);
+        assertTrue("re-saved SVG restores with paths",
+                restored2.getSignatureSvg().contains("<path "));
+    }
+
+    @Test
+    public void restore_legacyBitmapKey_isHonored() {
+        // Backwards compatibility (PR #190): saved state produced by an older library
+        // version stored the signature as a raw Bitmap Parcelable under
+        // "signatureBitmap". Restoring must honour that legacy key rather than
+        // silently losing the signature (the old crash was at save time, not restore).
+        layout();
+        drawStroke(pad);
+        Bitmap legacyBitmap = pad.getTransparentSignatureBitmap();
+
+        // Build an old-format saved-state Bundle by taking a real one and rewriting
+        // it to the legacy shape: drop the new "signaturePng" key and store the raw
+        // Bitmap under "signatureBitmap", exactly as older library versions did.
+        Bundle legacyState = (Bundle) pad.onSaveInstanceState();
+        legacyState.remove("signaturePng");
+        legacyState.remove("signatureSvgPaths");
+        legacyState.putParcelable("signatureBitmap", legacyBitmap);
+
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
+        restored.onRestoreInstanceState(legacyState);
+
+        assertFalse("a legacy Bitmap-key signature must be restored, not lost",
+                restored.isEmpty());
+    }
+
+    @Test
     public void save_overCap_dropsSignatureAndRestoresEmpty() {
         // The size cap is the core crash-prevention mechanism. When the compressed
         // signature exceeds the cap, nothing is persisted and the pad restores

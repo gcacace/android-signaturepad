@@ -39,6 +39,15 @@ consumers of `com.github.gcacace:signature-pad`.
   across repeated rotations.
 - **`SvgBuilder.build()` was not idempotent** — a second call duplicated the last
   stroke. `build()` (and the new `getInnerPaths()`) are now idempotent.
+- **SVG could be dropped on a re-save before layout.** If a restored pad was saved
+  again before its first layout pass (a `recreate()`/rotation storm), the PNG was
+  kept but the SVG paths were lost because the builder had not been replayed yet.
+  The save path now falls back to the staged restored paths, so `getSignatureSvg()`
+  survives repeated restores.
+- **Saved state from older library versions is honoured.** State written by a
+  pre-1.4.0 version stored the signature as a raw `Bitmap` under `signatureBitmap`;
+  restore now reads that legacy key (safe — the crash was at save time, not
+  restore) instead of silently losing the signature.
 
 ### Added
 - `SvgBuilder.getInnerPaths()` / `restorePaths(String)` — additive helpers used to
