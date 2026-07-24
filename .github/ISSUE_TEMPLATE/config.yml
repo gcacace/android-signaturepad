@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / usage help
+    url: https://github.com/gcacace/android-signaturepad#usage
+    about: >
+      Usage questions are often answered in the README and the example app.
+      Please check there before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/gcacace/android-signaturepad/security/policy
+    about: Please report security issues privately, not as a public issue.

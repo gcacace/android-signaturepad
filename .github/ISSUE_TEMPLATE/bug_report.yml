@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a problem with the library
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please search
+        [existing issues](https://github.com/gcacace/android-signaturepad/issues)
+        first — many crashes on background/rotation and dot-rendering issues are
+        already fixed in recent releases.
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: >
+        The exact steps to trigger the bug. A minimal sample project or a failing
+        test is the most helpful thing you can provide.
+      placeholder: |
+        1. Add a SignaturePad to a layout...
+        2. Draw a signature...
+        3. Rotate the device...
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Stack trace / logs
+      description: If the app crashes, paste the full stack trace here.
+      render: text
+  - type: input
+    id: library-version
+    attributes:
+      label: Library version
+      description: The version of `com.github.gcacace:signature-pad` you are using.
+      placeholder: e.g. 1.4.0
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version / API level
+      placeholder: e.g. Android 14 (API 34)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: e.g. Pixel 7, or an emulator
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I am using the latest release of the library.
+          required: false

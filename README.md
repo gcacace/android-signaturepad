@@ -1,6 +1,8 @@
 Android Signature Pad
 ====================
 
+[![CI](https://github.com/gcacace/android-signaturepad/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/gcacace/android-signaturepad/actions/workflows/ci.yml)
+
 Android Signature Pad is an Android library for drawing smooth signatures. It uses variable width Bézier curve interpolation based on [Smoother Signatures](http://corner.squareup.com/2012/07/smoother-signatures.html) post by [Square](https://squareup.com).
 
 ![Screenshot](https://github.com/gcacace/android-signaturepad/raw/master/header.png)
@@ -26,7 +28,7 @@ Open your `build.gradle` and make sure that Maven Central repository is declared
 ```
 Then, include the library as dependency:
 ```gradle
-compile 'com.github.gcacace:signature-pad:1.3.1'
+implementation 'com.github.gcacace:signature-pad:1.4.0'
 ```
 
 ### For Maven users
@@ -36,7 +38,7 @@ Add this dependency to your `pom.xml`:
 <dependency>
   <groupId>com.github.gcacace</groupId>
   <artifactId>signature-pad</artifactId>
-  <version>1.3.1</version>
+  <version>1.4.0</version>
   <type>aar</type>
 </dependency>
 ```
@@ -119,13 +121,28 @@ Please refer to https://github.com/netinhoteixeira/cordova-plugin-signature-view
 Thanks to [bradmartin](https://github.com/bradmartin), there is a NativeScript plugin.
 Please refer to [https://github.com/bradmartin/nativescript-signaturepad](https://github.com/bradmartin/nativescript-signaturepad).
 
-## Caveats
+## Configuration changes (rotation, backgrounding)
 
-Currently doesn't support screen rotations. Pull requests are welcome!
+The signature is preserved across configuration changes such as screen rotation
+and process backgrounding: it is saved in the view's instance state and restored
+automatically. `getSignatureSvg()` is also restored after a rotation.
+
+> Note: a signature drawn *before* a rotation is restored in its original
+> coordinate space and scaled to fit the new orientation. Strokes added *after* a
+> rotation are captured in the new orientation's coordinate space; the on-screen
+> bitmap stays correct, but such strokes and the pre-rotation strokes live in
+> different coordinate spaces within the same SVG document.
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for how
+to build, test, and open a pull request, and note the
+[Code of Conduct](CODE_OF_CONDUCT.md). Security issues should be reported
+privately — see [SECURITY.md](SECURITY.md).
 
 ## License
 
-    Copyright 2014-2016 Gianluca Cacace
+    Copyright 2014-2025 Gianluca Cacace
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
