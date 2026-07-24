@@ -19,6 +19,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   never triggered. The full event stream is now forwarded to the detector (#66).
 - **`setSignatureBitmap(null)` threw a `NullPointerException`.** Passing `null`
   now clears the pad instead, which is convenient with data binding (#94).
+- **A double-tap clear could be undone by the next rotation.** Clearing via
+  double-tap did not drop the saved-state bitmap, so a pad that had been restored
+  across a configuration change would re-persist its pre-clear signature and the
+  cleared signature reappeared on the following rotation. A double-tap clear now
+  goes through `clear()`, which drops the saved state so the cleared pad restores
+  empty.
 
 ### Docs
 - Fixed the broken "Smoother Signatures" link in the README — the old
