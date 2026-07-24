@@ -144,7 +144,7 @@ public class SignaturePadTest {
         layout();
         pad.setPenColor(Color.RED);
 
-        dispatchTouch(pad, 0f, 0f);
+        dispatchTouch(pad, 50f, 50f);
 
         Bitmap bitmap = pad.getTransparentSignatureBitmap();
         assertTrue("a red pen must paint red ink", hasPixelOfColor(bitmap, Color.RED));
