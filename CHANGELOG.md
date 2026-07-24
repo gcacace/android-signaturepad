@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- **`getSignatureSvg()` returned an empty SVG after a rotation / configuration
+  change.** The signature was restored from a PNG bitmap, which repaints the ink
+  but leaves the SVG path builder empty. The SVG paths are now persisted alongside
+  the PNG in saved state (under an independent 256 KB cap) and re-injected on
+  restore, so `getSignatureSvg()` returns the signature again — using the original
+  view dimensions as the `viewBox` so it renders as drawn, and remaining consistent
+  across repeated rotations.
+- **`SvgBuilder.build()` was not idempotent** — a second call duplicated the last
+  stroke. `build()` (and the new `getInnerPaths()`) are now idempotent.
+
+### Added
+- `SvgBuilder.getInnerPaths()` / `restorePaths(String)` — additive helpers used to
+  persist and restore the SVG path fragments across a configuration change.
+
+### Behavior notes
+- After restoring a signature across a rotation, any strokes drawn *afterward* are
+  captured in the new (rotated) view coordinate space and are therefore
+  geometrically inconsistent with the restored strokes within the same SVG
+  document. The visible signature (bitmap) remains correct. Reconciling both into a
+  single coordinate space would require replaying vector strokes and is deferred to
+  the 2.0 modernization.
+
 ## [1.4.0]
 
 Backward-compatible hotfix release. No public API changes — drop-in for existing
@@ -37,10 +60,10 @@ consumers of `com.github.gcacace:signature-pad`.
 
 ### Known issues (targeted for 2.0)
 - `getSignatureSvg()` still returns an empty SVG after a rotation (the restored
-  signature is a bitmap, so its vector path is not reconstructed).
-- `SvgBuilder.build()` is not idempotent (a second call duplicates the last
-  stroke); the `SvgPathBuilder` zero-curve discard guard is dead code. Both are
-  pinned by characterization tests.
+  signature is a bitmap, so its vector path is not reconstructed). *(Fixed in
+  Unreleased — see above.)*
+- The `SvgPathBuilder` zero-curve discard guard is dead code, pinned by a
+  characterization test.
 
 ## [Phase 0 & 1 — build/publishing revival and test safety net]
 

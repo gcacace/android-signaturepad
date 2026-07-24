@@ -47,6 +47,35 @@ public class SvgBuilder {
                 .toString();
     }
 
+    /**
+     * Returns only the accumulated inner {@code <path .../>} fragments — NOT the
+     * wrapping {@code <svg>}/{@code <g>} document — flushing any in-progress path
+     * first. Because it carries no {@code <svg>} chrome it has no embedded
+     * width/height/viewBox, so it can be persisted across a configuration change
+     * and re-rendered later at whatever dimensions {@link #build(int, int)} is
+     * given. Idempotent: repeated calls return the same string (see
+     * {@link #appendCurrentPath()}).
+     */
+    public String getInnerPaths() {
+        if (isPathStarted()) {
+            appendCurrentPath();
+        }
+        return mSvgPathsBuilder.toString();
+    }
+
+    /**
+     * Re-injects inner path fragments previously produced by {@link #getInnerPaths()}
+     * so a later {@link #build(int, int)} emits them again. The fragments are
+     * appended to whatever is already accumulated, so strokes added afterwards via
+     * {@link #append(Bezier, float)} follow the restored paths. A no-op for
+     * {@code null} input.
+     */
+    public void restorePaths(final String innerPaths) {
+        if (innerPaths != null) {
+            mSvgPathsBuilder.append(innerPaths);
+        }
+    }
+
     public SvgBuilder append(final Bezier curve, final float strokeWidth) {
         final Integer roundedStrokeWidth = Math.round(strokeWidth);
         final SvgPoint curveStartSvgPoint = new SvgPoint(curve.startPoint);
@@ -74,6 +103,11 @@ public class SvgBuilder {
 
     private void appendCurrentPath() {
         mSvgPathsBuilder.append(mCurrentPathBuilder);
+        // Null out so build()/getInnerPaths() are idempotent: without this, a
+        // second call would flush (and thus duplicate) the same in-progress path
+        // again. The append() path re-assigns mCurrentPathBuilder via
+        // startNewPath() before its next use, so this is safe there.
+        mCurrentPathBuilder = null;
     }
 
     private boolean isPathStarted() {

@@ -218,6 +218,142 @@ public class SignaturePadTest {
         assertFalse(restored.isEmpty());
     }
 
+    // --- SVG survives rotation (getSignatureSvg after restore) ---------------
+
+    @Test
+    public void saveThenRestore_afterDrawing_restoresSignatureSvgPaths() {
+        // Core fix: getSignatureSvg() must return the signature's <path> data after
+        // a config change, not just a header-only SVG. Fails before the fix because
+        // setSignatureBitmap()->clearView() wipes mSvgBuilder and nothing repopulates it.
+        layout();
+        drawStroke(pad);
+        assertTrue("precondition: a drawn pad produces SVG paths",
+                pad.getSignatureSvg().contains("<path "));
+
+        Parcelable state = pad.onSaveInstanceState();
+
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
+        restored.onRestoreInstanceState(state);
+
+        String svg = restored.getSignatureSvg();
+        assertTrue("restored SVG should contain the signature paths", svg.contains("<path "));
+        assertTrue("restored SVG should use the original viewBox", svg.contains("viewBox=\"0 0 400 300\""));
+    }
+
+    @Test
+    public void saveThenRestore_svgPaths_persistedInBundle() {
+        layout();
+        drawStroke(pad);
+
+        Bundle bundle = (Bundle) pad.onSaveInstanceState();
+
+        String svgPaths = bundle.getString("signatureSvgPaths");
+        assertNotNull("SVG paths should be persisted alongside the PNG", svgPaths);
+        assertTrue("persisted SVG paths should contain a <path>", svgPaths.contains("<path "));
+        assertEquals("original width persisted", 400, bundle.getInt("signatureSvgWidth"));
+        assertEquals("original height persisted", 300, bundle.getInt("signatureSvgHeight"));
+    }
+
+    @Test
+    public void saveThenRestore_intoRotatedDimensions_svgUsesOriginalViewBox() {
+        // Restored paths are in the original (pre-rotation) space, so the viewBox
+        // must be the original size, not the new rotated view size.
+        layout();
+        drawStroke(pad);
+
+        Parcelable state = pad.onSaveInstanceState();
+
+        SignaturePad restored = newPad();
+        layout(restored, 300, 400); // swapped
+        restored.onRestoreInstanceState(state);
+
+        String svg = restored.getSignatureSvg();
+        assertTrue("viewBox must be the original 400x300, not the rotated size",
+                svg.contains("viewBox=\"0 0 400 300\""));
+    }
+
+    @Test
+    public void resaveAfterRestore_keepsOriginalSvgDimensions() {
+        // Rotate-twice guard: after restoring into a rotated view, saving AGAIN must
+        // persist the ORIGINAL coordinate-space dimensions (the paths are still in
+        // that space), not the current rotated view size — otherwise the viewBox
+        // flip-flops and no longer matches the path coordinates.
+        layout(); // 400x300
+        drawStroke(pad);
+        Parcelable first = pad.onSaveInstanceState();
+
+        SignaturePad restored = newPad();
+        layout(restored, 300, 400); // rotated
+        restored.onRestoreInstanceState(first);
+
+        Bundle second = (Bundle) restored.onSaveInstanceState();
+        assertEquals("re-saved width must stay the original 400", 400, second.getInt("signatureSvgWidth"));
+        assertEquals("re-saved height must stay the original 300", 300, second.getInt("signatureSvgHeight"));
+
+        // And a further restore still reports the original viewBox.
+        SignaturePad restored2 = newPad();
+        layout(restored2, 400, 300);
+        restored2.onRestoreInstanceState(second);
+        assertTrue(restored2.getSignatureSvg().contains("viewBox=\"0 0 400 300\""));
+    }
+
+    @Test
+    public void save_svgOverCap_dropsOnlySvg_keepsBitmap() {
+        // When the SVG exceeds its independent cap, only the SVG is dropped: the
+        // PNG still persists (bitmap restores) and getSignatureSvg() is empty.
+        layout();
+        drawStroke(pad);
+        pad.mMaxSavedStateBytesSvg = 1; // force the SVG over-cap drop path
+
+        Bundle bundle = (Bundle) pad.onSaveInstanceState();
+        assertNotNull("PNG must still be persisted", bundle.getByteArray("signaturePng"));
+        assertNull("over-cap SVG must not be persisted", bundle.getString("signatureSvgPaths"));
+
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
+        restored.onRestoreInstanceState(bundle);
+
+        assertFalse("bitmap still restores", restored.isEmpty());
+        assertFalse("SVG could not be restored, so no paths", restored.getSignatureSvg().contains("<path "));
+    }
+
+    @Test
+    public void saveThenRestore_emptyPad_svgHasNoPaths() {
+        layout();
+
+        Bundle bundle = (Bundle) pad.onSaveInstanceState();
+        assertNull("empty pad persists no SVG", bundle.getString("signatureSvgPaths"));
+
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
+        restored.onRestoreInstanceState(bundle);
+
+        assertTrue(restored.isEmpty());
+        assertFalse("empty pad restores with no SVG paths", restored.getSignatureSvg().contains("<path "));
+    }
+
+    @Test
+    public void restoredSvg_afterClear_revertsToEmptyAndCurrentViewBox() {
+        // After a restore, clear() must drop the restored paths AND the original
+        // viewBox dims, so getSignatureSvg() reverts to the current view size.
+        layout();
+        drawStroke(pad);
+        Parcelable state = pad.onSaveInstanceState();
+
+        SignaturePad restored = newPad();
+        layout(restored, 300, 400);
+        restored.onRestoreInstanceState(state);
+        assertTrue("precondition: restored SVG present", restored.getSignatureSvg().contains("<path "));
+
+        restored.clear();
+
+        String svg = restored.getSignatureSvg();
+        assertFalse("cleared pad has no paths", svg.contains("<path "));
+        assertTrue("viewBox reverts to the current view size after clear",
+                svg.contains("viewBox=\"0 0 300 400\""));
+    }
+
     @Test
     public void restoredPad_resavedBeforeLayout_stillPersistsSignature() {
         // Regression guard: restoring into a not-yet-laid-out pad leaves mIsEmpty
