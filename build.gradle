@@ -1,26 +1,7 @@
-buildscript {
-    repositories {
-        google()
-        jcenter()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:3.6.1'
-        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
-    }
-}
-
+// Top-level build file. Plugins are declared here with `apply false` and
+// applied in the module build.gradle files.
 plugins {
-    id 'com.jfrog.bintray' version '1.8.4'
-    id 'maven-publish'
-}
-
-allprojects {
-    version = VERSION_NAME
-    group = GROUP
-
-    repositories {
-        google()
-        jcenter()
-    }
+    id 'com.android.library' version '8.11.1' apply false
+    id 'com.android.application' version '8.11.1' apply false
+    id 'com.vanniktech.maven.publish' version '0.29.0' apply false
 }
