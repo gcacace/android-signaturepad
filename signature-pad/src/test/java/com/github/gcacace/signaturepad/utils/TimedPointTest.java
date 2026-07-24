@@ -88,10 +88,8 @@ public class TimedPointTest {
     @Test
     public void set_refreshesTimestamp() throws InterruptedException {
         TimedPoint point = new TimedPoint().set(0f, 0f);
-        long first = point.timestamp;
-        Thread.sleep(2);
+        point.timestamp = 1L; // sentinel value to verify set() overwrites it
         point.set(1f, 1f);
-
-        assertNotSame(first, point.timestamp);
+        assertEquals("set() should overwrite timestamp", false, point.timestamp == 1L);
     }
 }
