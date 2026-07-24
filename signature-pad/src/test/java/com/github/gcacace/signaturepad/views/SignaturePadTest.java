@@ -3,6 +3,7 @@ package com.github.gcacace.signaturepad.views;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
@@ -10,7 +11,10 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.os.SystemClock;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.FrameLayout;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -19,6 +23,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.GraphicsMode;
 
 /**
  * Robolectric tests for {@link SignaturePad}. Lives in the view's own package so
@@ -29,14 +34,19 @@ import org.robolectric.annotation.Config;
  * it cannot reproduce the native "Could not copy bitmap to parcel blob" crash
  * (issues #178/#169/#183/#187) that a real device throws. That end-to-end crash
  * is verified on an emulator. What these tests DO lock down is the structural
- * root cause — a raw Bitmap living in the saved-state Bundle — so the Phase 2
- * fix that removes it will force an intentional update here.
+ * fix: no raw Bitmap ever lives in the saved-state Bundle — the signature is
+ * persisted as a size-capped PNG {@code byte[]} instead.
  */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 34)
+// NATIVE graphics rasterize Canvas.drawPoint / drawBitmap for real. LEGACY
+// treats them as no-ops, which would make the dot (#41) and pixel-trim (#145)
+// assertions below vacuous and the PNG save/restore round-trip fake.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class SignaturePadTest {
 
     private Activity activity;
+    private FrameLayout root;
     private SignaturePad pad;
 
     @Before
@@ -44,16 +54,48 @@ public class SignaturePadTest {
         ActivityController<Activity> controller =
                 Robolectric.buildActivity(Activity.class).setup();
         activity = controller.get();
-        pad = new SignaturePad(activity, null);
-        pad.setId(View.generateViewId());
+        root = new FrameLayout(activity);
+        activity.setContentView(root);
+        pad = newPad();
+    }
+
+    /** Create a pad attached to the activity's view tree (so getParent() != null). */
+    private SignaturePad newPad() {
+        SignaturePad target = new SignaturePad(activity, null);
+        target.setId(View.generateViewId());
+        root.addView(target);
+        return target;
     }
 
     /** Give the view a real size so it can allocate its backing bitmap. */
     private void layout() {
-        pad.measure(
-                View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(300, View.MeasureSpec.EXACTLY));
-        pad.layout(0, 0, 400, 300);
+        layout(pad, 400, 300);
+    }
+
+    /** Lay out an arbitrary pad at the given size. */
+    private void layout(SignaturePad target, int width, int height) {
+        target.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+        target.layout(0, 0, width, height);
+    }
+
+    /** Dispatch a single touch (down, move, up) at the given coordinates. */
+    private void dispatchTouch(SignaturePad target, float x, float y) {
+        long t = SystemClock.uptimeMillis();
+        target.onTouchEvent(MotionEvent.obtain(t, t, MotionEvent.ACTION_DOWN, x, y, 0));
+        target.onTouchEvent(MotionEvent.obtain(t, t + 10, MotionEvent.ACTION_UP, x, y, 0));
+    }
+
+    /** Draw a short multi-point stroke so the pad has real content. */
+    private void drawStroke(SignaturePad target) {
+        long t = SystemClock.uptimeMillis();
+        target.onTouchEvent(MotionEvent.obtain(t, t, MotionEvent.ACTION_DOWN, 20f, 20f, 0));
+        for (int i = 1; i <= 8; i++) {
+            target.onTouchEvent(MotionEvent.obtain(
+                    t, t + i * 10L, MotionEvent.ACTION_MOVE, 20f + i * 15f, 20f + i * 8f, 0));
+        }
+        target.onTouchEvent(MotionEvent.obtain(t, t + 90, MotionEvent.ACTION_UP, 140f, 84f, 0));
     }
 
     // --- basic state ---------------------------------------------------------
@@ -96,52 +138,245 @@ public class SignaturePadTest {
         assertTrue("onClear should fire when the pad is cleared", listener.onClearCalled);
     }
 
-    // --- saved-state characterization (Phase 2 target) -----------------------
+    // --- saved-state: crash fix (#178/#169/#183/#187) ------------------------
 
     @Test
-    public void onSaveInstanceState_currentlyStoresRawBitmapInBundle() {
-        // CHARACTERIZATION of the crash ROOT CAUSE (issues #178/#169/#183/#187).
-        //
-        // onSaveInstanceState() places the full transparent signature Bitmap
-        // into the saved-state Bundle under "signatureBitmap". On a real device
-        // the framework later serializes that Bundle across a Binder
-        // transaction and the native Bitmap copy fails -> app crash. The
-        // existing try/catch (commit 89d3596) cannot help, because the throw
-        // happens outside onSaveInstanceState(), during activityStopped().
-        //
-        // Phase 2 fix: stop parcelling the bitmap. When that lands, this
-        // assertion SHOULD fail and be updated to reflect the new, safe state.
+    public void onSaveInstanceState_doesNotStoreBitmapInBundle() {
+        // The crash root cause was a raw Bitmap in the saved-state Bundle: the
+        // framework copies it to a native parcel blob during activityStopped(),
+        // which throws on large signatures. The fix stores a PNG byte[] instead.
+        // This test locks the structural guarantee that no Bitmap ever enters
+        // the Bundle. (Robolectric can't reproduce the native throw itself.)
         layout();
+        drawStroke(pad);
 
         Parcelable state = pad.onSaveInstanceState();
 
         assertTrue("saved state should be a Bundle once the view is laid out",
                 state instanceof Bundle);
         Bundle bundle = (Bundle) state;
-        Parcelable saved = bundle.getParcelable("signatureBitmap");
-        assertTrue("ROOT CAUSE: a raw Bitmap is currently stored in the state bundle",
-                saved instanceof Bitmap);
+
+        assertNull("the legacy raw-Bitmap key must be gone",
+                bundle.getParcelable("signatureBitmap"));
+        for (String key : bundle.keySet()) {
+            Object value = bundle.get(key);
+            assertFalse("no value in the saved-state Bundle may be a Bitmap (key=" + key + ")",
+                    value instanceof Bitmap);
+        }
+        assertNotNull("a drawn signature should persist as a PNG byte[]",
+                bundle.getByteArray("signaturePng"));
     }
 
     @Test
-    public void saveThenRestoreInstanceState_roundTripsWithoutThrowing() {
+    public void saveThenRestore_afterDrawing_restoresNonEmpty() {
         // Exercises the save -> restore path the framework runs on rotation.
-        // Robolectric won't reproduce the native parcel crash, but this guards
-        // against regressions in the (de)serialization logic itself.
         layout();
+        drawStroke(pad);
+        assertFalse("precondition: the pad has content after drawing", pad.isEmpty());
 
         Parcelable state = pad.onSaveInstanceState();
 
-        SignaturePad restored = new SignaturePad(activity, null);
-        restored.setId(pad.getId());
-        restored.measure(
-                View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(300, View.MeasureSpec.EXACTLY));
-        restored.layout(0, 0, 400, 300);
-
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
         restored.onRestoreInstanceState(state);
-        // A cleared/empty pad that is restored should not spuriously report content.
+
+        assertFalse("a drawn signature should be restored, not lost", restored.isEmpty());
+    }
+
+    @Test
+    public void saveThenRestore_emptyPad_staysEmpty() {
+        // An untouched pad must round-trip without persisting a signature and
+        // must come up empty on the other side.
+        layout();
+
+        Parcelable state = pad.onSaveInstanceState();
+        assertTrue(state instanceof Bundle);
+        assertNull("nothing should be persisted for an empty pad",
+                ((Bundle) state).getByteArray("signaturePng"));
+
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
+        restored.onRestoreInstanceState(state);
+
+        assertTrue("an empty pad restores empty", restored.isEmpty());
         assertNotNull(restored.getPoints());
+    }
+
+    @Test
+    public void saveThenRestore_intoRotatedDimensions_doesNotThrow() {
+        // Restoring into a view with swapped (portrait<->landscape) dimensions
+        // must scale into the new bounds without throwing.
+        layout();
+        drawStroke(pad);
+
+        Parcelable state = pad.onSaveInstanceState();
+
+        SignaturePad restored = newPad();
+        layout(restored, 300, 400); // swapped
+        restored.onRestoreInstanceState(state);
+
+        assertFalse(restored.isEmpty());
+    }
+
+    @Test
+    public void restoredPad_resavedBeforeLayout_stillPersistsSignature() {
+        // Regression guard: restoring into a not-yet-laid-out pad leaves mIsEmpty
+        // true (setSignatureBitmap defers to layout) while the signature is cached.
+        // A second save before layout (e.g. recreate() storm) must NOT drop it.
+        layout();
+        drawStroke(pad);
+        Parcelable first = pad.onSaveInstanceState();
+
+        // Restore into a pad that is NOT laid out yet.
+        SignaturePad restored = newPad();
+        restored.onRestoreInstanceState(first);
+        assertTrue("precondition: deferred restore leaves the pad reporting empty",
+                restored.isEmpty());
+
+        // Save again before any layout pass.
+        Parcelable second = restored.onSaveInstanceState();
+        assertTrue(second instanceof Bundle);
+        assertNotNull("the restored signature must survive a re-save before layout",
+                ((Bundle) second).getByteArray("signaturePng"));
+    }
+
+    @Test
+    public void save_overCap_dropsSignatureAndRestoresEmpty() {
+        // The size cap is the core crash-prevention mechanism. When the compressed
+        // signature exceeds the cap, nothing is persisted and the pad restores
+        // empty (rather than risking TransactionTooLargeException).
+        layout();
+        drawStroke(pad);
+        pad.mMaxSavedStateBytes = 1; // force the over-cap drop path
+
+        Parcelable state = pad.onSaveInstanceState();
+        assertTrue(state instanceof Bundle);
+        assertNull("an over-cap signature must not be persisted",
+                ((Bundle) state).getByteArray("signaturePng"));
+
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
+        restored.onRestoreInstanceState(state);
+        assertTrue("dropping an over-cap signature restores empty", restored.isEmpty());
+    }
+
+    @Test
+    public void save_underCap_persistsSignature() {
+        // Complement to the over-cap test: a normal signature stays under the
+        // default cap and is persisted (guards against an inverted comparison).
+        layout();
+        drawStroke(pad);
+
+        Parcelable state = pad.onSaveInstanceState();
+        assertNotNull("an under-cap signature is persisted",
+                ((Bundle) state).getByteArray("signaturePng"));
+    }
+
+    // --- #145: zero-bounds trim crash ---------------------------------------
+
+    @Test
+    public void getTransparentSignatureBitmap_onEmptyLaidOutPad_doesNotThrow() {
+        // Blank pad: trimming finds no pixels and returns null (documented
+        // behavior). The point is that neither ensureSignatureBitmap() nor the
+        // crop throws "width and height must be > 0" (#145).
+        layout();
+        pad.getTransparentSignatureBitmap(true);
+        assertNotNull("the untrimmed bitmap is always allocatable",
+                pad.getTransparentSignatureBitmap());
+    }
+
+    @Test
+    public void onSaveInstanceState_beforeLayout_doesNotThrow() {
+        // A save issued before the first layout pass (0x0 view) must not throw.
+        Parcelable state = pad.onSaveInstanceState();
+        assertNotNull(state);
+    }
+
+    @Test
+    public void ensureSignatureBitmap_beforeLayout_clampsToOneByOne() {
+        // Directly reproduces the #145 stack trace's inner call:
+        // getTransparentSignatureBitmap() -> ensureSignatureBitmap() with a 0x0
+        // (never-laid-out) view, which used to throw "width and height must
+        // be > 0". The dimensions must be clamped to >= 1px. This test GATES the
+        // clamp: without it, Bitmap.createBitmap(0, 0, ...) throws here.
+        assertEquals(0, pad.getWidth());
+        assertEquals(0, pad.getHeight());
+
+        Bitmap bitmap = pad.getTransparentSignatureBitmap();
+
+        assertNotNull(bitmap);
+        assertEquals("width clamped to 1px on a 0-width view", 1, bitmap.getWidth());
+        assertEquals("height clamped to 1px on a 0-height view", 1, bitmap.getHeight());
+    }
+
+    @Test
+    public void getTransparentSignatureBitmap_afterSingleDot_returnsTrimmedInk() {
+        // End-to-end: a single tap renders a dot (#41), so trimming finds ink and
+        // returns a non-null cropped bitmap rather than the null it returns for a
+        // truly blank pad. (The zero-dimension clamp itself is gated by
+        // getTransparentSignatureBitmap_afterHorizontalStroke_clampsZeroHeight.)
+        layout();
+        dispatchTouch(pad, 100f, 100f);
+        Bitmap trimmed = pad.getTransparentSignatureBitmap(true);
+        assertNotNull("the tapped dot should be trimmable to a non-null bitmap", trimmed);
+    }
+
+    @Test
+    public void getTransparentSignatureBitmap_afterHorizontalStroke_clampsZeroHeight() {
+        // GATES the trim-crop clamp (the single-dot test rasterizes a multi-pixel
+        // blob, so its bounds are already > 1px and the clamp is a no-op there). A
+        // dead-straight horizontal line exactly one row tall trims to zero height
+        // (yMax == yMin); the crop must clamp to >= 1px instead of throwing (#145).
+        layout();
+        // Ink a single full-width row on the (blank) backing bitmap so the trim
+        // bounds collapse to zero height.
+        Bitmap canvasBitmap = pad.getTransparentSignatureBitmap();
+        for (int x = 0; x < canvasBitmap.getWidth(); x++) {
+            canvasBitmap.setPixel(x, 0, Color.BLACK);
+        }
+
+        Bitmap trimmed = pad.getTransparentSignatureBitmap(true);
+
+        assertNotNull(trimmed);
+        assertEquals("a single inked row trims to exactly 1px height", 1, trimmed.getHeight());
+        assertTrue(trimmed.getWidth() >= 1);
+    }
+
+    // --- #41: single tap renders a dot --------------------------------------
+
+    @Test
+    public void singleTap_marksPadNotEmpty() {
+        layout();
+        dispatchTouch(pad, 100f, 100f);
+        assertFalse("a single tap must mark the pad non-empty", pad.isEmpty());
+    }
+
+    @Test
+    public void singleTap_atOrigin_actuallyRastersInk() {
+        // The real #41 fix. A single tap builds a Bezier whose control points all
+        // coincide. Away from the origin, float rounding in the Bezier basis makes
+        // curve.length() a tiny NON-zero value, so ceil(length)==1 and the normal
+        // loop happens to draw. AT THE ORIGIN every term is exactly 0*x==0.0, so
+        // length()==0, drawSteps==0, and the pre-fix loop drew NOTHING. This is the
+        // coordinate that genuinely reproduces #41, so it gates the dot branch:
+        // without the fix this assertion fails (verified via mutation).
+        layout();
+        dispatchTouch(pad, 0f, 0f);
+
+        Bitmap bitmap = pad.getTransparentSignatureBitmap();
+        assertTrue("a tap at the origin must still render a dot (#41)", hasInk(bitmap));
+    }
+
+    /** True if any pixel in the bitmap is non-transparent. */
+    private static boolean hasInk(Bitmap bitmap) {
+        for (int x = 0; x < bitmap.getWidth(); x++) {
+            for (int y = 0; y < bitmap.getHeight(); y++) {
+                if (Color.alpha(bitmap.getPixel(x, y)) != 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static final class RecordingListener implements SignaturePad.OnSignedListener {

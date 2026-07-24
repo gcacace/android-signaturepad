@@ -1,9 +1,11 @@
 package com.github.gcacace.signaturepad.views;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -26,11 +28,31 @@ import com.github.gcacace.signaturepad.utils.TimedPoint;
 import com.github.gcacace.signaturepad.view.ViewCompat;
 import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SignaturePad extends View {
     private static final String TAG = SignaturePad.class.getName();
+
+    /**
+     * Upper bound (in bytes) on the PNG-compressed signature stored in the
+     * saved-state {@link Bundle}. Android hands the whole Bundle to the system
+     * over a Binder transaction whose buffer is ~1 MB, shared with everything
+     * else being saved. If the compressed signature exceeds this cap we persist
+     * nothing rather than risk a {@code TransactionTooLargeException}; the pad
+     * simply comes up empty after the config change and the user re-signs.
+     * Adjustable — a typical signature is only a few KB.
+     */
+    private static final int MAX_SAVED_STATE_BYTES = 256 * 1024;
+
+    /**
+     * Effective cap used by {@link #onSaveInstanceState()}. Defaults to
+     * {@link #MAX_SAVED_STATE_BYTES}; package-private (not public API) so tests
+     * can force the over-cap drop path deterministically without allocating a
+     * multi-megabyte bitmap.
+     */
+    int mMaxSavedStateBytes = MAX_SAVED_STATE_BYTES;
 
     //View state
     private List<TimedPoint> mPoints;
@@ -109,15 +131,53 @@ public class SignaturePad extends View {
         });
     }
 
+    // Bitmap.compress is @WorkerThread, but onSaveInstanceState must run
+    // synchronously on the UI thread by framework contract, so the compression
+    // cannot be moved off-thread here. The payload is a single already-rendered
+    // signature bitmap (same UI-thread cost the previous implementation already
+    // paid in getTransparentSignatureBitmap), so this is safe in practice.
+    @SuppressLint("WrongThread")
     @Override
     protected Parcelable onSaveInstanceState() {
         try {
             Bundle bundle = new Bundle();
             bundle.putParcelable("superState", super.onSaveInstanceState());
-            if (this.mHasEditState == null || this.mHasEditState) {
-                this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+            // Persist when there is a signature worth keeping: either live content
+            // (!mIsEmpty) OR a restored-but-not-yet-replayed signature. After
+            // onRestoreInstanceState decodes into a not-yet-laid-out pad,
+            // mBitmapSavedState holds the signature while mIsEmpty is still true
+            // (setSignatureBitmap defers setIsEmpty(false) to layout); gating on
+            // mIsEmpty alone would drop it on a second save before layout — a
+            // regression vs 1.3.1. A fresh, untouched pad matches neither term and
+            // stores nothing, so it correctly restores empty. When the pad has been
+            // cleared via clear(), mHasEditState is true, so the re-render below
+            // refreshes mBitmapSavedState to the current (blank) bitmap — this
+            // preserves 1.3.1's post-clear save behavior exactly.
+            if (!this.mIsEmpty || this.mBitmapSavedState != null) {
+                if (this.mHasEditState == null || this.mHasEditState) {
+                    this.mBitmapSavedState = this.getTransparentSignatureBitmap();
+                }
+                // Persist a PNG-compressed copy rather than the raw Bitmap. A raw
+                // Bitmap in the Bundle is copied to a native parcel blob during the
+                // framework's activityStopped() Binder transaction, which throws
+                // "Could not copy bitmap to parcel blob" / TransactionTooLargeException
+                // on large signatures (#178/#169/#183/#187). A byte[] never takes that
+                // path, and the size cap keeps the payload well under the Binder budget.
+                if (this.mBitmapSavedState != null) {
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    this.mBitmapSavedState.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    if (stream.size() <= mMaxSavedStateBytes) {
+                        bundle.putByteArray("signaturePng", stream.toByteArray());
+                    } else {
+                        // Too large to persist safely; drop it. The pad restores empty
+                        // and the user re-signs — strictly better than crashing.
+                        Log.w(TAG, String.format(
+                                "signature too large to save (%d bytes > %d cap); "
+                                        + "it will not be restored after the config change",
+                                stream.size(), mMaxSavedStateBytes));
+                    }
+                }
             }
-            bundle.putParcelable("signatureBitmap", this.mBitmapSavedState);
             return bundle;
         } catch(Exception e) {
             Log.w(TAG, String.format("error saving instance state: %s", e.getMessage()));
@@ -129,8 +189,16 @@ public class SignaturePad extends View {
     protected void onRestoreInstanceState(Parcelable state) {
         if (state instanceof Bundle) {
             Bundle bundle = (Bundle) state;
-            this.setSignatureBitmap((Bitmap) bundle.getParcelable("signatureBitmap"));
-            this.mBitmapSavedState = bundle.getParcelable("signatureBitmap");
+            byte[] png = bundle.getByteArray("signaturePng");
+            if (png != null) {
+                Bitmap signature = BitmapFactory.decodeByteArray(png, 0, png.length);
+                if (signature != null) {
+                    this.mBitmapSavedState = signature;
+                    this.setSignatureBitmap(signature);
+                }
+            }
+            // No saved signature (empty pad, or dropped for exceeding the size
+            // cap) => leave the pad empty; nothing to restore.
             state = bundle.getParcelable("superState");
         }
         this.mHasEditState = false;
@@ -411,7 +479,12 @@ public class SignaturePad extends View {
                 break;
         }
 
-        return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, xMax - xMin, yMax - yMin);
+        // Clamp to at least 1px: a single dot or a perfectly straight
+        // horizontal/vertical stroke yields zero-width or zero-height bounds,
+        // which would make Bitmap.createBitmap throw (#145).
+        int trimmedWidth = Math.max(xMax - xMin, 1);
+        int trimmedHeight = Math.max(yMax - yMin, 1);
+        return Bitmap.createBitmap(mSignatureBitmap, xMin, yMin, trimmedWidth, trimmedHeight);
     }
 
     private boolean onDoubleClick() {
@@ -500,6 +573,18 @@ public class SignaturePad extends View {
         float originalWidth = mPaint.getStrokeWidth();
         float widthDelta = endWidth - startWidth;
         float drawSteps = (float) Math.ceil(curve.length());
+
+        if (drawSteps == 0) {
+            // A zero-length curve (e.g. a single tap / dot) would otherwise draw
+            // nothing, because the loop below never runs. Render a single dot so
+            // the tap is visible (#41). The ROUND stroke cap makes drawPoint paint
+            // a filled circle; use the average width to match the SVG output above.
+            mPaint.setStrokeWidth((startWidth + endWidth) / 2);
+            mSignatureBitmapCanvas.drawPoint(curve.startPoint.x, curve.startPoint.y, mPaint);
+            expandDirtyRect(curve.startPoint.x, curve.startPoint.y);
+            mPaint.setStrokeWidth(originalWidth);
+            return;
+        }
 
         for (int i = 0; i < drawSteps; i++) {
             // Calculate the Bezier (x, y) coordinate for this step.
@@ -608,7 +693,11 @@ public class SignaturePad extends View {
 
     private void ensureSignatureBitmap() {
         if (mSignatureBitmap == null) {
-            mSignatureBitmap = Bitmap.createBitmap(getWidth(), getHeight(),
+            // Clamp to at least 1px. The view can be asked to produce its bitmap
+            // (e.g. from onSaveInstanceState) before it has been laid out, when
+            // getWidth()/getHeight() are still 0 — Bitmap.createBitmap then throws
+            // "width and height must be > 0" (#145).
+            mSignatureBitmap = Bitmap.createBitmap(Math.max(getWidth(), 1), Math.max(getHeight(), 1),
                     Bitmap.Config.ARGB_8888);
             mSignatureBitmapCanvas = new Canvas(mSignatureBitmap);
         }
