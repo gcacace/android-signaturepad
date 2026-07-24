@@ -626,6 +626,43 @@ public class SignaturePadTest {
                 pad.isEmpty());
     }
 
+    @Test
+    public void doubleTapClear_afterRestore_isNotUndoneByNextRotation() {
+        // Regression for the state bug flagged on PR #192: a double-tap clear must
+        // set mHasEditState (via clear(), not clearView()). Otherwise, after a
+        // restore (mHasEditState=false, mBitmapSavedState still holding the drawn
+        // signature) the next onSaveInstanceState() skips refreshing
+        // mBitmapSavedState and re-persists the STALE pre-clear signature, so the
+        // cleared signature reappears on the following rotation.
+        //
+        // Sequence: draw -> rotate(save/restore) -> double-tap clear ->
+        //           rotate(save/restore) -> must still be empty.
+        layout();
+        drawStroke(pad);
+
+        // Rotation 1: save and restore into a fresh laid-out pad.
+        Parcelable afterDraw = pad.onSaveInstanceState();
+        SignaturePad restored = newPad();
+        layout(restored, 400, 300);
+        restored.onRestoreInstanceState(afterDraw);
+        assertFalse("precondition: signature restored after first rotation",
+                restored.isEmpty());
+
+        // Double-tap clear on the restored pad.
+        restored.setClearOnDoubleClick(true);
+        doubleTap(restored, 50f, 50f);
+        assertTrue("double tap clears the restored pad", restored.isEmpty());
+
+        // Rotation 2: save the cleared pad and restore again.
+        Parcelable afterClear = restored.onSaveInstanceState();
+        SignaturePad restored2 = newPad();
+        layout(restored2, 400, 300);
+        restored2.onRestoreInstanceState(afterClear);
+
+        assertTrue("a double-tap clear must survive the next rotation, "
+                + "not resurrect the pre-clear signature", restored2.isEmpty());
+    }
+
     // --- #94: setSignatureBitmap(null) clears instead of crashing ------------
 
     @Test

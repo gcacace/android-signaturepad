@@ -166,10 +166,10 @@ public class SignaturePad extends View {
             // (setSignatureBitmap defers setIsEmpty(false) to layout); gating on
             // mIsEmpty alone would drop it on a second save before layout — a
             // regression vs 1.3.1. A fresh, untouched pad matches neither term and
-            // stores nothing, so it correctly restores empty. When the pad has been
-            // cleared via clear(), mHasEditState is true, so the re-render below
-            // refreshes mBitmapSavedState to the current (blank) bitmap — this
-            // preserves 1.3.1's post-clear save behavior exactly.
+            // stores nothing, so it correctly restores empty. A pad cleared via
+            // clear() also matches neither term — clear() nulls mBitmapSavedState —
+            // so a cleared pad likewise persists nothing and restores empty, even if
+            // it was itself restored from a prior save.
             if (!this.mIsEmpty || this.mBitmapSavedState != null) {
                 if (this.mHasEditState == null || this.mHasEditState) {
                     this.mBitmapSavedState = this.getTransparentSignatureBitmap();
@@ -361,6 +361,15 @@ public class SignaturePad extends View {
     public void clear() {
         this.clearView();
         this.mHasEditState = true;
+        // Drop the saved-state bitmap so a cleared pad persists nothing and
+        // restores empty. Without this, clearing a pad that was itself restored
+        // (mBitmapSavedState still holds the restored signature) would let the
+        // next onSaveInstanceState() re-persist that stale bitmap, resurrecting
+        // the cleared signature on the following rotation. Left out of
+        // clearView() on purpose: the restore path (setSignatureBitmap ->
+        // clearView) must keep mBitmapSavedState alive to survive a re-save
+        // before the first layout pass.
+        this.mBitmapSavedState = null;
     }
 
     @Override
@@ -634,7 +643,13 @@ public class SignaturePad extends View {
 
     private boolean onDoubleClick() {
         if (mClearOnDoubleClick) {
-            this.clearView();
+            // Use clear() rather than clearView() so the saved-state bitmap is
+            // dropped. After a restore, mBitmapSavedState holds the restored
+            // signature; clearView() alone would leave it in place, so the next
+            // onSaveInstanceState() would re-persist that stale bitmap and the
+            // cleared signature would reappear on the following rotation. clear()
+            // nulls mBitmapSavedState, so a double-tap-cleared pad restores empty.
+            this.clear();
             return true;
         }
         return false;
