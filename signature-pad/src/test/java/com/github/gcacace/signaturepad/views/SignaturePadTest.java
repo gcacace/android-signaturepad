@@ -135,6 +135,82 @@ public class SignaturePadTest {
         pad.setPenColorRes(android.R.color.black);
     }
 
+    // --- pen configuration ---------------------------------------------------
+
+    @Test
+    public void setPenColor_rendersDotInThatColor() {
+        // setPenColor's effect was never asserted. Set red, tap at the origin (the
+        // zero-length-curve dot branch), and confirm a red pixel was painted.
+        layout();
+        pad.setPenColor(Color.RED);
+
+        dispatchTouch(pad, 50f, 50f);
+
+        Bitmap bitmap = pad.getTransparentSignatureBitmap();
+        assertTrue("a red pen must paint red ink", hasPixelOfColor(bitmap, Color.RED));
+    }
+
+    @Test
+    public void setPenColorRes_invalidResource_fallsBackToBlackWithoutThrowing() {
+        // Resource id 0 is never valid, so getColor throws Resources.NotFoundException;
+        // the catch must fall back to black (#000000) rather than propagate. This
+        // gates the otherwise-uncovered catch branch.
+        layout();
+
+        pad.setPenColorRes(0);
+
+        dispatchTouch(pad, 0f, 0f);
+        Bitmap bitmap = pad.getTransparentSignatureBitmap();
+        assertTrue("the fallback pen must paint black ink",
+                hasPixelOfColor(bitmap, Color.BLACK));
+    }
+
+    @Test
+    public void setMinMaxAndVelocityWeight_thenDraw_stillRenders() {
+        // The three stroke-shaping setters were untested. Exercise them (they also
+        // run convertDpToPx and recompute mLastWidth) and confirm a stroke still
+        // renders afterwards.
+        pad.setMinWidth(2f);
+        pad.setMaxWidth(9f);
+        pad.setVelocityFilterWeight(0.5f);
+        layout();
+
+        drawStroke(pad);
+
+        assertFalse("the pad should have content after drawing", pad.isEmpty());
+        assertTrue("ink should be rendered with the reconfigured widths",
+                hasInk(pad.getTransparentSignatureBitmap()));
+    }
+
+    @Test
+    public void onTouchEvent_whenDisabled_ignoresTouchesAndStaysEmpty() {
+        // The !isEnabled() early return was uncovered. A disabled pad must ignore
+        // touches (onTouchEvent returns false and the pad stays empty).
+        layout();
+        pad.setEnabled(false);
+
+        dispatchTouch(pad, 50f, 50f);
+
+        assertTrue("a disabled pad must ignore touches and stay empty", pad.isEmpty());
+    }
+
+    @Test
+    public void getSignatureBitmap_afterDraw_hasWhiteBackgroundAndInk() {
+        // The white-background composite variant (getSignatureBitmap) had no test.
+        // After drawing it must be non-null, carry the drawn ink, and be painted on
+        // an opaque white background.
+        layout();
+        drawStroke(pad);
+
+        Bitmap bitmap = pad.getSignatureBitmap();
+
+        assertNotNull(bitmap);
+        assertTrue("the white-background bitmap must contain the drawn ink",
+                hasInk(bitmap));
+        assertTrue("the background must be composited white",
+                hasPixelOfColor(bitmap, Color.WHITE));
+    }
+
     // --- listener callbacks --------------------------------------------------
 
     @Test
@@ -145,6 +221,23 @@ public class SignaturePadTest {
         pad.clear();
 
         assertTrue("onClear should fire when the pad is cleared", listener.onClearCalled);
+    }
+
+    @Test
+    public void drawStroke_notifiesOnStartSigningAndOnSigned() {
+        // The onStartSigning (ACTION_DOWN) and onSigned (setIsEmpty(false)) callbacks
+        // were captured by RecordingListener but never asserted anywhere. Drawing a
+        // real stroke must fire both.
+        RecordingListener listener = new RecordingListener();
+        pad.setOnSignedListener(listener);
+        layout();
+
+        drawStroke(pad);
+
+        assertTrue("onStartSigning should fire when the pad is first touched",
+                listener.onStartSigningCalled);
+        assertTrue("onSigned should fire once the pad has content",
+                listener.onSignedCalled);
     }
 
     // --- saved-state: crash fix (#178/#169/#183/#187) ------------------------
@@ -710,6 +803,29 @@ public class SignaturePadTest {
         for (int x = 0; x < bitmap.getWidth(); x++) {
             for (int y = 0; y < bitmap.getHeight(); y++) {
                 if (Color.alpha(bitmap.getPixel(x, y)) != 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** True if any non-transparent pixel in the bitmap approximately matches the given color. */
+    private static boolean hasPixelOfColor(Bitmap bitmap, int color) {
+        final int expectedR = Color.red(color);
+        final int expectedG = Color.green(color);
+        final int expectedB = Color.blue(color);
+        final int maxDelta = 10; // tolerate anti-aliasing / blending
+
+        for (int x = 0; x < bitmap.getWidth(); x++) {
+            for (int y = 0; y < bitmap.getHeight(); y++) {
+                int pixel = bitmap.getPixel(x, y);
+                if (Color.alpha(pixel) == 0) {
+                    continue;
+                }
+                if (Math.abs(Color.red(pixel) - expectedR) <= maxDelta
+                        && Math.abs(Color.green(pixel) - expectedG) <= maxDelta
+                        && Math.abs(Color.blue(pixel) - expectedB) <= maxDelta) {
                     return true;
                 }
             }

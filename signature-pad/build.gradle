@@ -3,6 +3,7 @@ import com.vanniktech.maven.publish.SonatypeHost
 plugins {
     id 'com.android.library'
     id 'com.vanniktech.maven.publish'
+    id 'jacoco'
 }
 
 android {
@@ -12,6 +13,14 @@ android {
     defaultConfig {
         minSdkVersion 21
         consumerProguardFiles 'proguard-rules-consumer.pro'
+    }
+
+    buildTypes {
+        debug {
+            // Instrument the debug variant so :signature-pad:testDebugUnitTest
+            // emits JaCoCo execution data (consumed by jacocoTestReport below).
+            enableUnitTestCoverage true
+        }
     }
 
     compileOptions {
@@ -51,4 +60,55 @@ mavenPublishing {
     signAllPublications()
 
     coordinates(project.GROUP, 'signature-pad', project.VERSION_NAME)
+}
+
+// Code coverage. AGP's enableUnitTestCoverage produces a JaCoCo .exec file when
+// testDebugUnitTest runs; this task turns it into an XML report Codecov ingests.
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+tasks.withType(Test).configureEach {
+    jacoco {
+        // Robolectric loads classes-under-test through its own instrumenting
+        // sandbox classloader; those re-instrumented classes carry no source
+        // location, and JaCoCo drops "no-location classes" by default. Without
+        // this flag SignaturePad reported 0% coverage despite being exercised by
+        // 35 Robolectric tests (the util classes were counted only because their
+        // plain-JUnit tests load through the system classloader). Keep them.
+        includeNoLocationClasses = true
+        // Mandatory on JDK 11+: the coverage agent otherwise chokes on the
+        // bootstrap 'jdk.internal.*' classes ("bogus class" / bad class format).
+        excludes = ['jdk.internal.*']
+    }
+}
+
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+    group = 'verification'
+    description = 'Generates JaCoCo coverage report for the debug unit tests.'
+
+    reports {
+        xml.required = true   // consumed by Codecov
+        html.required = true  // handy locally
+    }
+
+    // Exclude generated code (data binding, R/BuildConfig) that would otherwise
+    // dilute the numbers.
+    def excludes = [
+            '**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*',
+            '**/*Test*.*', 'android/**/*.*',
+            // Generated data-binding glue — not hand-written code, so exclude it
+            // so the percentage reflects the library's own source. Note:
+            // SignaturePadBindingAdapter is NOT excluded — it is hand-written
+            // public @BindingAdapter API and is covered by its own test.
+            '**/databinding/**', '**/BR.*', '**/DataBinderMapperImpl*.*',
+            '**/DataBindingTriggerClass.*'
+    ]
+    def javaClasses = fileTree(dir: "${buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes", excludes: excludes)
+    classDirectories.setFrom(files([javaClasses]))
+    sourceDirectories.setFrom(files(['src/main/java']))
+    executionData.setFrom(fileTree(dir: buildDir, includes: [
+            'outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec'
+    ]))
 }
