@@ -193,7 +193,18 @@ public class SignaturePad extends View {
                         // own without affecting the raster restore. The paths are in
                         // the CURRENT view coordinate space; the dimensions give the
                         // restored SVG a self-consistent viewBox.
+                        // Prefer the live builder, but fall back to paths staged by a
+                        // prior restore that have not been replayed yet: after
+                        // onRestoreInstanceState the view may be saved AGAIN before its
+                        // first layout pass (a recreate/rotation storm), at which point
+                        // mSvgBuilder is still empty while mRestoredSvgPaths holds the
+                        // signature. Without this fallback the PNG would persist but the
+                        // SVG would be dropped, leaving getSignatureSvg() empty after the
+                        // next restore.
                         String svgPaths = mSvgBuilder.getInnerPaths();
+                        if ((svgPaths == null || svgPaths.isEmpty()) && mRestoredSvgPaths != null) {
+                            svgPaths = mRestoredSvgPaths;
+                        }
                         if (svgPaths != null && !svgPaths.isEmpty()) {
                             // Measure the actual UTF-8 byte length so the comparison
                             // matches the byte-defined cap even if the SVG ever carries
@@ -253,6 +264,17 @@ public class SignaturePad extends View {
                     this.mRestoredSvgHeight = bundle.getInt("signatureSvgHeight", 0);
                     this.mBitmapSavedState = signature;
                     this.setSignatureBitmap(signature);
+                }
+            } else {
+                // Backwards compatibility: state produced by an older library version
+                // stored the signature as a raw Bitmap Parcelable under
+                // "signatureBitmap". Reading it back is safe — the crash this release
+                // fixes happened at SAVE time (parcelling the Bitmap), not on restore —
+                // so honour that legacy key rather than silently losing the signature.
+                Bitmap legacy = bundle.getParcelable("signatureBitmap");
+                if (legacy != null) {
+                    this.mBitmapSavedState = legacy;
+                    this.setSignatureBitmap(legacy);
                 }
             }
             // No saved signature (empty pad, or dropped for exceeding the size
