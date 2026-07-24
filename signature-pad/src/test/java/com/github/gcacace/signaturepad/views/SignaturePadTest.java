@@ -80,22 +80,31 @@ public class SignaturePadTest {
         target.layout(0, 0, width, height);
     }
 
-    /** Dispatch a single touch (down, move, up) at the given coordinates. */
+    /** Obtain, dispatch, and recycle a MotionEvent so the shared pool isn't leaked. */
+    private void dispatch(SignaturePad target, long downTime, long eventTime, int action, float x, float y) {
+        MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
+        try {
+            target.onTouchEvent(event);
+        } finally {
+            event.recycle();
+        }
+    }
+
+    /** Dispatch a single touch (down, up) at the given coordinates. */
     private void dispatchTouch(SignaturePad target, float x, float y) {
         long t = SystemClock.uptimeMillis();
-        target.onTouchEvent(MotionEvent.obtain(t, t, MotionEvent.ACTION_DOWN, x, y, 0));
-        target.onTouchEvent(MotionEvent.obtain(t, t + 10, MotionEvent.ACTION_UP, x, y, 0));
+        dispatch(target, t, t, MotionEvent.ACTION_DOWN, x, y);
+        dispatch(target, t, t + 10, MotionEvent.ACTION_UP, x, y);
     }
 
     /** Draw a short multi-point stroke so the pad has real content. */
     private void drawStroke(SignaturePad target) {
         long t = SystemClock.uptimeMillis();
-        target.onTouchEvent(MotionEvent.obtain(t, t, MotionEvent.ACTION_DOWN, 20f, 20f, 0));
+        dispatch(target, t, t, MotionEvent.ACTION_DOWN, 20f, 20f);
         for (int i = 1; i <= 8; i++) {
-            target.onTouchEvent(MotionEvent.obtain(
-                    t, t + i * 10L, MotionEvent.ACTION_MOVE, 20f + i * 15f, 20f + i * 8f, 0));
+            dispatch(target, t, t + i * 10L, MotionEvent.ACTION_MOVE, 20f + i * 15f, 20f + i * 8f);
         }
-        target.onTouchEvent(MotionEvent.obtain(t, t + 90, MotionEvent.ACTION_UP, 140f, 84f, 0));
+        dispatch(target, t, t + 90, MotionEvent.ACTION_UP, 140f, 84f);
     }
 
     // --- basic state ---------------------------------------------------------

@@ -29,6 +29,7 @@ import com.github.gcacace.signaturepad.view.ViewCompat;
 import com.github.gcacace.signaturepad.view.ViewTreeObserverCompat;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -193,10 +194,12 @@ public class SignaturePad extends View {
                         // the CURRENT view coordinate space; the dimensions give the
                         // restored SVG a self-consistent viewBox.
                         String svgPaths = mSvgBuilder.getInnerPaths();
-                        if (svgPaths != null && svgPaths.length() > 0) {
-                            // SvgBuilder emits pure ASCII, so String.length() equals
-                            // the UTF-8 byte length; compare against the cap directly.
-                            if (svgPaths.length() <= mMaxSavedStateBytesSvg) {
+                        if (svgPaths != null && !svgPaths.isEmpty()) {
+                            // Measure the actual UTF-8 byte length so the comparison
+                            // matches the byte-defined cap even if the SVG ever carries
+                            // non-ASCII content.
+                            int svgBytes = svgPaths.getBytes(StandardCharsets.UTF_8).length;
+                            if (svgBytes <= mMaxSavedStateBytesSvg) {
                                 bundle.putString("signatureSvgPaths", svgPaths);
                                 // The dimensions identify the coordinate space the paths
                                 // are in. If the paths were themselves restored from a
@@ -210,9 +213,9 @@ public class SignaturePad extends View {
                                 bundle.putInt("signatureSvgHeight", svgHeight);
                             } else {
                                 Log.w(TAG, String.format(
-                                        "signature SVG too large to save (%d chars > %d cap); "
+                                        "signature SVG too large to save (%d bytes > %d cap); "
                                                 + "getSignatureSvg() will be empty after the config change",
-                                        svgPaths.length(), mMaxSavedStateBytesSvg));
+                                        svgBytes, mMaxSavedStateBytesSvg));
                             }
                         }
                     } else {
@@ -411,8 +414,11 @@ public class SignaturePad extends View {
      * document. The visible bitmap remains correct; only the mixed SVG is affected.
      */
     public String getSignatureSvg() {
-        int width = getTransparentSignatureBitmap().getWidth();
-        int height = getTransparentSignatureBitmap().getHeight();
+        // Call once — getTransparentSignatureBitmap() lazily allocates the backing
+        // bitmap, so reuse the result rather than invoking it per dimension.
+        Bitmap bitmap = getTransparentSignatureBitmap();
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
         // When paths were restored from saved state they are in the original view
         // space; pair them with the original dimensions for a self-consistent viewBox.
         if (mRestoredSvgWidth > 0 && mRestoredSvgHeight > 0) {

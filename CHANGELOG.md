@@ -6,28 +6,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Fixed
-- **`getSignatureSvg()` returned an empty SVG after a rotation / configuration
-  change.** The signature was restored from a PNG bitmap, which repaints the ink
-  but leaves the SVG path builder empty. The SVG paths are now persisted alongside
-  the PNG in saved state (under an independent 256 KB cap) and re-injected on
-  restore, so `getSignatureSvg()` returns the signature again — using the original
-  view dimensions as the `viewBox` so it renders as drawn, and remaining consistent
-  across repeated rotations.
-- **`SvgBuilder.build()` was not idempotent** — a second call duplicated the last
-  stroke. `build()` (and the new `getInnerPaths()`) are now idempotent.
-
-### Added
-- `SvgBuilder.getInnerPaths()` / `restorePaths(String)` — additive helpers used to
-  persist and restore the SVG path fragments across a configuration change.
-
-### Behavior notes
-- After restoring a signature across a rotation, any strokes drawn *afterward* are
-  captured in the new (rotated) view coordinate space and are therefore
-  geometrically inconsistent with the restored strokes within the same SVG
-  document. The visible signature (bitmap) remains correct. Reconciling both into a
-  single coordinate space would require replaying vector strokes and is deferred to
-  the 2.0 modernization.
+_Nothing yet._
 
 ## [1.4.0]
 
@@ -47,6 +26,19 @@ consumers of `com.github.gcacace:signature-pad`.
   `Bitmap.createBitmap` dimensions are now clamped to at least 1px.
 - **Single taps did not render a dot** (#41). A tap produces a zero-length curve,
   which drew nothing; a single dot is now painted for degenerate curves.
+- **`getSignatureSvg()` returned an empty SVG after a rotation / configuration
+  change.** The signature was restored from a PNG bitmap, which repaints the ink
+  but leaves the SVG path builder empty. The SVG paths are now persisted alongside
+  the PNG in saved state (under an independent 256 KB cap) and re-injected on
+  restore, so `getSignatureSvg()` returns the signature again — using the original
+  view dimensions as the `viewBox` so it renders as drawn, and remaining consistent
+  across repeated rotations.
+- **`SvgBuilder.build()` was not idempotent** — a second call duplicated the last
+  stroke. `build()` (and the new `getInnerPaths()`) are now idempotent.
+
+### Added
+- `SvgBuilder.getInnerPaths()` / `restorePaths(String)` — additive helpers used to
+  persist and restore the SVG path fragments across a configuration change.
 
 ### Behavior notes
 - If a signature is exceptionally large and its PNG exceeds the 256 KB cap, it is
@@ -57,11 +49,14 @@ consumers of `com.github.gcacace:signature-pad`.
   `true`) after a configuration change. Previously it persisted a blank bitmap and
   restored as non-empty, spuriously firing `onSigned()`. Drawn signatures continue
   to restore and fire listeners as before.
+- After restoring a signature across a rotation, any strokes drawn *afterward* are
+  captured in the new (rotated) view coordinate space and are therefore
+  geometrically inconsistent with the restored strokes within the same SVG
+  document. The visible signature (bitmap) remains correct. Reconciling both into a
+  single coordinate space would require replaying vector strokes and is deferred to
+  the 2.0 modernization.
 
 ### Known issues (targeted for 2.0)
-- `getSignatureSvg()` still returns an empty SVG after a rotation (the restored
-  signature is a bitmap, so its vector path is not reconstructed). *(Fixed in
-  Unreleased — see above.)*
 - The `SvgPathBuilder` zero-curve discard guard is dead code, pinned by a
   characterization test.
 
